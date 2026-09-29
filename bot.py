@@ -4,7 +4,12 @@ import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
+
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -15,59 +20,121 @@ from telegram.ext import (
 )
 
 
-# =========================
+# =========================================================
 # CONFIG
-# =========================
+# =========================================================
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+ADMIN_ID_RAW = os.getenv("ADMIN_ID")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_NAME = os.path.join(BASE_DIR, "cafinet.db")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set.")
 
-IRAN_TZ = ZoneInfo("Asia/Tehran")
+if not ADMIN_ID_RAW:
+    raise RuntimeError("ADMIN_ID is not set.")
+
+
+ADMIN_ID = int(ADMIN_ID_RAW)
+
 
 CHANNEL_LINK = "https://t.me/CafiNetOnlin24"
 BOT_LINK = "https://t.me/CafiNetOnlinBot"
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
 )
 
-logger = logging.getLogger("CafiNetOnline24")
+DB_NAME = os.path.join(
+    BASE_DIR,
+    "cafinet.db"
+)
 
 
-# =========================
+IRAN_TZ = ZoneInfo(
+    "Asia/Tehran"
+)
+
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+
+logger = logging.getLogger(
+    "CafiNetOnline24"
+)
+
+
+
+# =========================================================
 # TIME
-# =========================
+# =========================================================
+
 
 def iran_now():
-    return datetime.now(IRAN_TZ)
+
+    return datetime.now(
+        IRAN_TZ
+    )
+
 
 
 def now_text():
-    return iran_now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return iran_now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
 
 
 def today_text():
-    return iran_now().strftime("%Y-%m-%d")
+
+    return iran_now().strftime(
+        "%Y-%m-%d"
+    )
+
 
 
 def is_bot_closed():
-    now = iran_now().time()
-    return now >= time(23,0) or now < time(7,0)
+
+    current = iran_now().time()
+
+    return (
+        current >= time(23,0)
+        or current < time(7,0)
+    )
 
 
 
-# =========================
+def closed_message():
+
+    return """
+🌙 کافی‌نت آنلاین ۲۴
+
+در حال حاضر خارج از ساعت فعالیت هستیم.
+
+🕖 ساعت فعالیت:
+۰۷:۰۰ تا ۲۳:۰۰
+
+لطفاً در ساعات کاری مراجعه کنید.
+"""
+
+
+
+# =========================================================
 # DATABASE
-# =========================
+# =========================================================
+
 
 def get_db():
-    conn = sqlite3.connect(DB_NAME)
+
+    conn = sqlite3.connect(
+        DB_NAME
+    )
+
     conn.row_factory = sqlite3.Row
+
     return conn
 
 
@@ -75,210 +142,89 @@ def get_db():
 def init_db():
 
     conn = get_db()
+
     cur = conn.cursor()
 
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS requests(
+    CREATE TABLE IF NOT EXISTS requests (
+
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+
         tracking_code TEXT UNIQUE,
-        user_id INTEGER,
+
+        user_id INTEGER NOT NULL,
+
         username TEXT,
-        full_name TEXT,
-        phone TEXT,
+
+        full_name TEXT NOT NULL,
+
+        phone TEXT NOT NULL,
+
         telegram_id TEXT,
-        description TEXT,
-        category TEXT,
-        service TEXT,
-        status TEXT,
-        created_at TEXT,
-        updated_at TEXT
+
+        description TEXT NOT NULL,
+
+        category TEXT NOT NULL,
+
+        service TEXT NOT NULL,
+
+        status TEXT NOT NULL,
+
+        created_at TEXT NOT NULL,
+
+        updated_at TEXT NOT NULL
     )
     """)
+
 
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS registrations(
+    CREATE TABLE IF NOT EXISTS messages (
+
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
-        registration_date TEXT,
-        active INTEGER DEFAULT 1,
-        created_at TEXT
+
+        tracking_code TEXT NOT NULL,
+
+        sender_type TEXT NOT NULL,
+
+        sender_id INTEGER NOT NULL,
+
+        message TEXT NOT NULL,
+
+        created_at TEXT NOT NULL
     )
     """)
 
 
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS registrations (
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        title TEXT NOT NULL,
+
+        registration_date TEXT NOT NULL,
+
+        active INTEGER DEFAULT 1,
+
+        created_at TEXT NOT NULL
+    )
+    """)
+
+
+
     conn.commit()
+
     conn.close()
 
 
 
-# =========================
-# STATES
-# =========================
-
-USER_STATES = {}
-
-
-STATE_NAME = "name"
-STATE_PHONE = "phone"
-STATE_TELEGRAM = "telegram"
-STATE_DESCRIPTION = "description"
-
-STATE_TRACKING = "tracking"
-
-STATE_ADMIN_SEARCH = "admin_search"
-STATE_ADMIN_ADD_REG = "admin_add_reg"
-
-
-
-# =========================
-# SERVICES
-# =========================
-
-SERVICES = {
-
-"vehicle":"🚗 خودرو",
-"insurance":"🛡 بیمه",
-"tax":"💰 مالیاتی",
-"judicial":"⚖️ قضایی",
-"bank":"🏦 بانکی",
-"loan":"💵 وام",
-"medical":"🏥 درمانی",
-"education":"🎓 آموزشی",
-"ticket":"🎫 بلیط",
-"bill":"🧾 قبوض"
-
-}
-
-
-
-# =========================
-# MAIN KEYBOARD
-# =========================
-
-def main_keyboard(user_id=None):
-
-    buttons=[
-
-        [
-            InlineKeyboardButton(
-            "📝 ثبت‌نام‌های آنلاین",
-            callback_data="online_regs"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "🚗 خودرو",
-            callback_data="update"
-            ),
-            InlineKeyboardButton(
-            "🛡 بیمه",
-            callback_data="update"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "🔎 پیگیری درخواست",
-            callback_data="tracking"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "📋 درخواست‌های من",
-            callback_data="my_requests"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "💬 پشتیبانی",
-            callback_data="support"
-            ),
-            InlineKeyboardButton(
-            "ℹ️ درباره ما",
-            callback_data="about"
-            )
-        ]
-
-    ]
-
-
-    if user_id == ADMIN_ID:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                "🛠 پنل مدیریت",
-                callback_data="admin_panel"
-                )
-            ]
-        )
-
-
-    return InlineKeyboardMarkup(buttons)
-
-
-
-# =========================
-# ADMIN PANEL
-# =========================
-
-def admin_keyboard():
-
-    return InlineKeyboardMarkup([
-
-        [
-            InlineKeyboardButton(
-            "📋 درخواست‌ها",
-            callback_data="admin_requests"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "📝 افزودن ثبت‌نام",
-            callback_data="admin_add_reg"
-            ),
-
-            InlineKeyboardButton(
-            "📑 ثبت‌نام‌های امروز",
-            callback_data="admin_regs"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "🔎 جستجوی درخواست",
-            callback_data="admin_search"
-            )
-        ],
-
-        [
-            InlineKeyboardButton(
-            "🏠 منوی اصلی",
-            callback_data="home"
-            )
-        ]
-
-    ])
-
-
-
-def home_keyboard():
-
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-            "🏠 منوی اصلی",
-            callback_data="home"
-            )
-        ]
-    ])# =========================
+# =========================================================
 # REQUEST FUNCTIONS
-# =========================
+# =========================================================
+
 
 def create_request(
     user_id,
@@ -292,26 +238,32 @@ def create_request(
 ):
 
     conn = get_db()
+
     cur = conn.cursor()
 
 
     cur.execute("""
-    INSERT INTO requests(
-        tracking_code,
-        user_id,
-        username,
-        full_name,
-        phone,
-        telegram_id,
-        description,
-        category,
-        service,
-        status,
-        created_at,
-        updated_at
+    INSERT INTO requests
+
+    (
+    tracking_code,
+    user_id,
+    username,
+    full_name,
+    phone,
+    telegram_id,
+    description,
+    category,
+    service,
+    status,
+    created_at,
+    updated_at
     )
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-    """,(
+
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    """,
+
+    (
         "TEMP",
         user_id,
         username,
@@ -327,224 +279,652 @@ def create_request(
     ))
 
 
+
     rid = cur.lastrowid
 
-    code = f"CF{10000+rid}"
+
+    code = f"CF{10000 + rid}"
 
 
-    cur.execute("""
-    UPDATE requests
-    SET tracking_code=?
-    WHERE id=?
-    """,(code,rid))
+
+    cur.execute(
+        """
+        UPDATE requests
+
+        SET tracking_code=?
+
+        WHERE id=?
+        """,
+        (
+            code,
+            rid
+        )
+    )
 
 
     conn.commit()
 
 
     row = cur.execute(
-        "SELECT * FROM requests WHERE id=?",
-        (rid,)
-    ).fetchone()
-
-
-    conn.close()
-
-    return row
-
-
-
-def get_request(code):
-
-    code = code.upper().replace("#","")
-
-    conn=get_db()
-
-    row=conn.execute(
         """
-        SELECT * FROM requests
-        WHERE tracking_code=?
+        SELECT *
+
+        FROM requests
+
+        WHERE id=?
         """,
-        (code,)
+        (
+            rid,
+        )
     ).fetchone()
+
 
     conn.close()
 
-    return row
+
+    return row# =========================================================
+# REQUEST DATABASE FUNCTIONS
+# =========================================================
 
 
+def get_request(tracking_code):
 
-def update_status(code,status):
+    if not tracking_code:
+        return None
 
-    conn=get_db()
 
-    conn.execute(
+    tracking_code = (
+        tracking_code
+        .strip()
+        .upper()
+        .replace("#","")
+    )
+
+
+    conn = get_db()
+
+
+    row = conn.execute(
         """
-        UPDATE requests
-        SET status=?,
-        updated_at=?
+        SELECT *
+
+        FROM requests
+
         WHERE tracking_code=?
         """,
         (
-            status,
-            now_text(),
-            code
+            tracking_code,
         )
-    )
+    ).fetchone()
 
-    conn.commit()
+
     conn.close()
 
 
+    return row
 
-def get_today_registrations():
 
-    conn=get_db()
 
-    rows=conn.execute(
+def get_user_requests(user_id):
+
+    conn = get_db()
+
+
+    rows = conn.execute(
         """
         SELECT *
-        FROM registrations
-        WHERE registration_date=?
-        AND active=1
+
+        FROM requests
+
+        WHERE user_id=?
+
+        ORDER BY id DESC
         """,
-        (today_text(),)
+        (
+            user_id,
+        )
     ).fetchall()
 
+
     conn.close()
+
 
     return rows
 
 
 
-def add_registration(title):
+def update_status(
+    tracking_code,
+    status
+):
 
-    conn=get_db()
+    conn = get_db()
+
+
+    conn.execute(
+        """
+        UPDATE requests
+
+        SET status=?,
+            updated_at=?
+
+        WHERE tracking_code=?
+        """,
+        (
+            status,
+            now_text(),
+            tracking_code
+        )
+    )
+
+
+    conn.commit()
+
+    conn.close()
+
+
+
+def save_message(
+    tracking_code,
+    sender_type,
+    sender_id,
+    message
+):
+
+    conn = get_db()
+
+
+    conn.execute(
+        """
+        INSERT INTO messages
+
+        (
+        tracking_code,
+        sender_type,
+        sender_id,
+        message,
+        created_at
+        )
+
+        VALUES (?,?,?,?,?)
+        """,
+
+        (
+            tracking_code,
+            sender_type,
+            sender_id,
+            message,
+            now_text()
+        )
+    )
+
+
+    conn.commit()
+
+    conn.close()
+
+
+
+# =========================================================
+# ONLINE REGISTRATIONS
+# =========================================================
+
+
+def add_registration(
+    title,
+    registration_date=None
+):
+
+    if registration_date is None:
+        registration_date = today_text()
+
+
+
+    conn = get_db()
+
 
     conn.execute(
         """
         INSERT INTO registrations
+
         (
         title,
         registration_date,
         active,
         created_at
         )
-        VALUES(?,?,1,?)
+
+        VALUES (?,?,1,?)
         """,
+
         (
             title,
-            today_text(),
+            registration_date,
             now_text()
         )
     )
 
+
     conn.commit()
+
     conn.close()
 
 
 
-# =========================
-# SEND REQUEST DETAILS
-# =========================
+def get_today_registrations():
+
+    conn = get_db()
 
 
-async def send_request_details(
-    chat_id,
-    request,
-    context
+    rows = conn.execute(
+        """
+        SELECT *
+
+        FROM registrations
+
+        WHERE registration_date=?
+
+        AND active=1
+
+        ORDER BY id ASC
+        """,
+
+        (
+            today_text(),
+        )
+    ).fetchall()
+
+
+    conn.close()
+
+
+    return rows
+
+
+
+def get_registration(
+    reg_id
 ):
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"""
-📋 جزئیات درخواست
+    conn = get_db()
 
-🎫 کد رهگیری:
-{request['tracking_code']}
 
-📂 دسته:
-{request['category']}
+    row = conn.execute(
+        """
+        SELECT *
 
-🔧 خدمت:
-{request['service']}
+        FROM registrations
 
-👤 نام:
-{request['full_name']}
+        WHERE id=?
 
-📱 شماره:
-{request['phone']}
+        AND active=1
+        """,
 
-📝 توضیحات:
-{request['description']}
+        (
+            reg_id,
+        )
+    ).fetchone()
 
-📌 وضعیت:
-{request['status']}
 
-🕐 زمان ثبت:
-{request['created_at']}
-""",
-        reply_markup=home_keyboard()
+    conn.close()
+
+
+    return row
+
+
+
+def deactivate_registration(
+    reg_id
+):
+
+    conn = get_db()
+
+
+    conn.execute(
+        """
+        UPDATE registrations
+
+        SET active=0
+
+        WHERE id=?
+        """,
+        (
+            reg_id,
+        )
     )
 
 
+    conn.commit()
 
-# =========================
-# REGISTRATION KEYBOARD
-# =========================
+    conn.close()
 
 
-def registrations_keyboard():
 
-    rows=[]
+# =========================================================
+# SERVICES
+# =========================================================
 
-    for item in get_today_registrations():
 
-        rows.append([
+UPDATING_SERVICES = {
+
+    "vehicle":
+    "🚗 خودرو",
+
+    "insurance":
+    "🛡️ بیمه",
+
+    "tax":
+    "💰 مالیاتی",
+
+    "judicial":
+    "⚖️ قضایی",
+
+    "bank":
+    "🏦 بانکی",
+
+    "loan":
+    "💵 وام",
+
+    "medical":
+    "🏥 درمانی",
+
+    "education":
+    "🎓 آموزشی",
+
+    "ticket":
+    "🎫 بلیط",
+
+    "bill":
+    "🧾 قبوض",
+
+    "other":
+    "➕ سایر خدمات"
+
+}
+
+
+
+# =========================================================
+# USER STATES
+# =========================================================
+
+
+USER_STATES = {}
+
+
+STATE_REG_FULLNAME = "reg_fullname"
+STATE_REG_PHONE = "reg_phone"
+STATE_REG_TELEGRAM = "reg_telegram"
+STATE_REG_DESCRIPTION = "reg_description"
+
+
+STATE_OTHER_FULLNAME = "other_fullname"
+STATE_OTHER_PHONE = "other_phone"
+STATE_OTHER_TELEGRAM = "other_telegram"
+STATE_OTHER_DESCRIPTION = "other_description"
+
+
+STATE_TRACKING = "tracking"
+
+
+STATE_ADMIN_ADD_REG = "admin_add_reg"
+
+STATE_ADMIN_REPLY = "admin_reply"# =========================================================
+# KEYBOARDS
+# =========================================================
+
+
+def main_keyboard(user_id=None):
+
+    rows = [
+
+        [
             InlineKeyboardButton(
-                "📝 "+item["title"],
-                callback_data=f"reg|{item['id']}"
+                "📝 ثبت‌نام‌های آنلاین",
+                callback_data="online_regs"
             )
-        ])
+        ],
 
 
-    rows.append([
-        InlineKeyboardButton(
-            "➕ سایر ثبت‌نام‌ها",
-            callback_data="other_reg"
+        [
+            InlineKeyboardButton(
+                "🚗 خودرو",
+                callback_data="updating|vehicle"
+            ),
+
+            InlineKeyboardButton(
+                "🛡️ بیمه",
+                callback_data="updating|insurance"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "💰 مالیاتی",
+                callback_data="updating|tax"
+            ),
+
+            InlineKeyboardButton(
+                "⚖️ قضایی",
+                callback_data="updating|judicial"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🏦 بانکی",
+                callback_data="updating|bank"
+            ),
+
+            InlineKeyboardButton(
+                "💵 وام",
+                callback_data="updating|loan"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🏥 درمانی",
+                callback_data="updating|medical"
+            ),
+
+            InlineKeyboardButton(
+                "🎓 آموزشی",
+                callback_data="updating|education"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🎫 بلیط",
+                callback_data="updating|ticket"
+            ),
+
+            InlineKeyboardButton(
+                "🧾 قبوض",
+                callback_data="updating|bill"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "➕ سایر خدمات",
+                callback_data="updating|other"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🔎 پیگیری درخواست",
+                callback_data="tracking"
+            ),
+
+            InlineKeyboardButton(
+                "📋 درخواست‌های من",
+                callback_data="my_requests"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "💬 پشتیبانی",
+                callback_data="support"
+            ),
+
+            InlineKeyboardButton(
+                "ℹ️ درباره ما",
+                callback_data="about"
+            )
+        ]
+
+    ]
+
+
+    # فقط برای صاحب ربات
+
+    if user_id == ADMIN_ID:
+
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    "🛠 پنل مدیریت",
+                    callback_data="admin_panel"
+                )
+            ]
         )
-    ])
-
-
-    rows.append([
-        InlineKeyboardButton(
-            "🏠 بازگشت",
-            callback_data="home"
-        )
-    ])
 
 
     return InlineKeyboardMarkup(rows)
 
 
 
-# =========================
-# ABOUT
-# =========================
+
+def home_keyboard():
+
+    return InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "🏠 منوی اصلی",
+                callback_data="home"
+            )
+        ]
+
+    ])
+
+
+
+
+def admin_keyboard():
+
+    return InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "📝 افزودن ثبت‌نام امروز",
+                callback_data="admin_add_reg"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "📋 ثبت‌نام‌های امروز",
+                callback_data="admin_regs"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🔎 جستجوی درخواست",
+                callback_data="admin_find"
+            )
+        ],
+
+
+        [
+            InlineKeyboardButton(
+                "🏠 بازگشت",
+                callback_data="home"
+            )
+        ]
+
+    ])
+
+
+
+
+def registrations_keyboard():
+
+    rows = []
+
+
+    registrations = get_today_registrations()
+
+
+    for reg in registrations:
+
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    "📝 " + reg["title"],
+                    callback_data=f"registration|{reg['id']}"
+                )
+            ]
+        )
+
+
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                "➕ سایر ثبت‌نام‌ها",
+                callback_data="other_registration"
+            )
+        ]
+    )
+
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                "🔙 بازگشت",
+                callback_data="home"
+            )
+        ]
+    )
+
+
+    return InlineKeyboardMarkup(rows)
+
+
+
+# =========================================================
+# ABOUT PAGE
+# =========================================================
 
 
 async def about_page(query):
 
     await query.edit_message_text(
+
 f"""
-⚡️ کافی‌نت آنلاین 24
+⚡️ کافی‌نت آنلاین ۲۴
 
-سامانه هوشمند ثبت و پیگیری خدمات آنلاین
+سامانه هوشمند خدمات آنلاین
 
-📝 ثبت درخواست
+📝 ثبت درخواست‌های آنلاین
 🔎 پیگیری با کد رهگیری
-💬 ارتباط با پشتیبانی
-🚀 انجام خدمات ساده‌تر و سریع‌تر
+💬 ارتباط مستقیم با پشتیبانی
+🚀 انجام خدمات سریع و ساده
 
 📢 کانال رسمی:
 {CHANNEL_LINK}
@@ -552,136 +932,447 @@ f"""
 🤖 ربات:
 {BOT_LINK}
 """,
+
         reply_markup=home_keyboard()
-    )
-
-
-
-# =========================
-# STATUS BUTTONS ADMIN
-# =========================
-
-
-def status_keyboard(code):
-
-    return InlineKeyboardMarkup([
-
-        [
-        InlineKeyboardButton(
-            "🔵 در حال انجام",
-            callback_data=f"doing|{code}"
-        )
-        ],
-
-        [
-        InlineKeyboardButton(
-            "🟢 انجام شد",
-            callback_data=f"done|{code}"
-        )
-        ],
-
-        [
-        InlineKeyboardButton(
-            "🔴 رد شد",
-            callback_data=f"reject|{code}"
-        )
-        ]
-
-    ])# =========================
+    )# =========================================================
 # START
-# =========================
+# =========================================================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     user = update.effective_user
 
-    USER_STATES.pop(user.id,None)
+
+    USER_STATES.pop(
+        user.id,
+        None
+    )
+
+
+    if is_bot_closed() and user.id != ADMIN_ID:
+
+        await update.message.reply_text(
+            closed_message()
+        )
+
+        return
+
+
 
     await update.message.reply_text(
-        """
+
+"""
 🌐 کافی‌نت آنلاین ۲۴
 
 به سامانه خدمات آنلاین خوش آمدید.
 
 📌 خدمت موردنظر خود را انتخاب کنید:
 """,
-        reply_markup=main_keyboard(user.id)
+
+        reply_markup=main_keyboard(
+            user.id
+        )
     )
 
 
 
-# =========================
+# =========================================================
+# ONLINE REGISTRATION
+# =========================================================
+
+
+async def show_online_registrations(query):
+
+
+    regs = get_today_registrations()
+
+
+    if regs:
+
+        text = """
+📝 ثبت‌نام‌های آنلاین امروز
+
+ثبت‌نام موردنظر را انتخاب کنید:
+"""
+
+    else:
+
+        text = """
+📝 ثبت‌نام‌های آنلاین امروز
+
+فعلاً ثبت‌نامی برای امروز ثبت نشده است.
+
+در صورت نبود گزینه موردنظر،
+«سایر ثبت‌نام‌ها» را انتخاب کنید.
+"""
+
+
+
+    await query.edit_message_text(
+
+        text,
+
+        reply_markup=registrations_keyboard()
+
+    )
+
+
+
+
+
+async def select_registration(
+    query,
+    reg_id
+):
+
+
+    reg = get_registration(
+        reg_id
+    )
+
+
+    if not reg:
+
+        await query.answer(
+            "این ثبت‌نام فعال نیست.",
+            show_alert=True
+        )
+
+        return
+
+
+
+    USER_STATES[
+        query.from_user.id
+    ] = {
+
+        "state":
+        STATE_REG_FULLNAME,
+
+        "category":
+        "📝 ثبت‌نام آنلاین",
+
+        "service":
+        reg["title"]
+
+    }
+
+
+
+    await query.edit_message_text(
+
+f"""
+📝 ثبت‌نام:
+{reg['title']}
+
+👤 نام و نام خانوادگی خود را ارسال کنید:
+"""
+
+    )
+
+
+
+
+
+
+async def start_other_registration(query):
+
+
+    USER_STATES[
+        query.from_user.id
+    ] = {
+
+        "state":
+        STATE_OTHER_FULLNAME,
+
+        "category":
+        "📝 ثبت‌نام آنلاین",
+
+        "service":
+        "➕ سایر ثبت‌نام‌ها"
+
+    }
+
+
+
+    await query.edit_message_text(
+
+"""
+➕ سایر ثبت‌نام‌ها
+
+ثبت‌نام موردنظر در لیست نیست.
+
+👤 نام و نام خانوادگی خود را ارسال کنید:
+"""
+
+    )
+
+
+
+
+
+# =========================================================
+# FINISH REQUEST
+# =========================================================
+
+
+async def finish_request(
+    update,
+    context,
+    data
+):
+
+    user = update.effective_user
+
+
+
+    req = create_request(
+
+        user_id=user.id,
+
+        username=user.username or "",
+
+        full_name=data["full_name"],
+
+        phone=data["phone"],
+
+        telegram_id=data.get(
+            "telegram_id",
+            ""
+        ),
+
+        description=data["description"],
+
+        category=data["category"],
+
+        service=data["service"]
+
+    )
+
+
+
+    code = req["tracking_code"]
+
+
+
+    save_message(
+
+        code,
+
+        "user",
+
+        user.id,
+
+        req["description"]
+
+    )
+
+
+
+    USER_STATES.pop(
+        user.id,
+        None
+    )
+
+
+
+    await update.message.reply_text(
+
+f"""
+✅ درخواست شما ثبت شد.
+
+🎫 کد رهگیری:
+{code}
+
+📌 وضعیت:
+🟡 در انتظار بررسی
+
+⚠️ این کد را نگه دارید.
+""",
+
+        reply_markup=home_keyboard()
+
+    )
+
+
+
+
+    keyboard = InlineKeyboardMarkup([
+
+
+        [
+
+            InlineKeyboardButton(
+                "🔵 در حال انجام",
+                callback_data=f"doing|{code}"
+            )
+
+        ],
+
+
+        [
+
+            InlineKeyboardButton(
+                "🟢 انجام شد",
+                callback_data=f"done|{code}"
+            ),
+
+            InlineKeyboardButton(
+                "🔴 رد شد",
+                callback_data=f"reject|{code}"
+            )
+
+        ]
+
+    ])
+
+
+
+
+    await context.bot.send_message(
+
+        ADMIN_ID,
+
+f"""
+🆕 درخواست جدید
+
+🎫 کد:
+{code}
+
+📂 دسته:
+{req['category']}
+
+🔧 خدمت:
+{req['service']}
+
+
+👤 نام:
+{req['full_name']}
+
+📱 شماره:
+{req['phone']}
+
+
+📝 توضیحات:
+
+{req['description']}
+
+
+📌 وضعیت:
+🟡 در انتظار بررسی
+""",
+
+        reply_markup=keyboard
+
+    )# =========================================================
 # CALLBACK HANDLER
-# =========================
+# =========================================================
 
-async def callback_handler(update:Update,
-                           context:ContextTypes.DEFAULT_TYPE):
 
-    query=update.callback_query
+async def callback_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
     await query.answer()
 
-    user_id=query.from_user.id
-    data=query.data
+
+    user_id = query.from_user.id
+
+    data = query.data
+
 
 
     # HOME
 
-    if data=="home":
+    if data == "home":
 
-        USER_STATES.pop(user_id,None)
+        USER_STATES.pop(
+            user_id,
+            None
+        )
+
 
         await query.edit_message_text(
+
             "🌐 منوی اصلی کافی‌نت آنلاین ۲۴",
-            reply_markup=main_keyboard(user_id)
+
+            reply_markup=main_keyboard(
+                user_id
+            )
         )
+
         return
+
 
 
 
     # ABOUT
 
-    if data=="about":
+    if data == "about":
 
         await about_page(query)
+
         return
+
 
 
 
     # ADMIN PANEL
 
-    if data=="admin_panel":
+    if data == "admin_panel":
 
-        if user_id!=ADMIN_ID:
+
+        if user_id != ADMIN_ID:
+
             return
 
 
+
         await query.edit_message_text(
-            """
+
+"""
 🛠 پنل مدیریت کافی‌نت آنلاین ۲۴
 
-بخش مدیریت را انتخاب کنید:
+بخش موردنظر را انتخاب کنید:
 """,
+
             reply_markup=admin_keyboard()
+
         )
 
         return
 
 
 
-    # ADD REGISTRATION
 
-    if data=="admin_add_reg":
+    # ADD REG
 
-        if user_id!=ADMIN_ID:
+    if data == "admin_add_reg":
+
+
+        if user_id != ADMIN_ID:
+
             return
 
 
-        USER_STATES[ADMIN_ID]={
-            "state":STATE_ADMIN_ADD_REG
+
+        USER_STATES[ADMIN_ID] = {
+
+            "state":
+            STATE_ADMIN_ADD_REG
+
         }
 
 
         await query.edit_message_text(
+
             "📝 نام ثبت‌نام جدید را ارسال کنید:"
         )
 
@@ -689,143 +1380,292 @@ async def callback_handler(update:Update,
 
 
 
-    # SHOW REGISTRATIONS
 
-    if data=="online_regs":
+    # ONLINE REG
 
-
-        regs=get_today_registrations()
+    if data == "online_regs":
 
 
-        if not regs:
-
-            text="""
-📝 ثبت‌نام‌های آنلاین امروز
-
-فعلاً ثبت‌نامی اضافه نشده است.
-"""
-
-        else:
-
-            text="""
-📝 ثبت‌نام‌های آنلاین امروز
-
-مورد موردنظر را انتخاب کنید:
-"""
-
-
-        await query.edit_message_text(
-            text,
-            reply_markup=registrations_keyboard()
+        await show_online_registrations(
+            query
         )
 
         return
+
+
+
+
+    if data == "other_registration":
+
+        await start_other_registration(
+            query
+        )
+
+        return
+
+
+
+
+    if data.startswith(
+        "registration|"
+    ):
+
+
+        reg_id = int(
+            data.split("|")[1]
+        )
+
+
+        await select_registration(
+            query,
+            reg_id
+        )
+
+        return
+
+
+
+
+
+    # UPDATING
+
+
+    if data.startswith(
+        "updating|"
+    ):
+
+
+        key = data.split("|")[1]
+
+
+        name = UPDATING_SERVICES.get(
+            key,
+            "خدمت"
+        )
+
+
+
+        await query.edit_message_text(
+
+f"""
+{name}
+
+🔄 این بخش در حال بروزرسانی است.
+
+به‌زودی فعال خواهد شد.
+""",
+
+            reply_markup=home_keyboard()
+
+        )
+
+
+        return
+
+
 
 
 
     # TRACKING
 
-    if data=="tracking":
 
-        USER_STATES[user_id]={
-            "state":STATE_TRACKING
+    if data == "tracking":
+
+
+        USER_STATES[user_id] = {
+
+            "state":
+            STATE_TRACKING
+
         }
 
 
         await query.edit_message_text(
-            """
+
+"""
 🔎 پیگیری درخواست
 
 کد رهگیری خود را ارسال کنید:
 """
+
+        )
+
+
+        return
+
+
+
+
+    # MY REQUESTS
+
+
+    if data == "my_requests":
+
+
+        reqs = get_user_requests(
+            user_id
+        )
+
+
+        if not reqs:
+
+
+            await query.edit_message_text(
+
+"""
+📋 درخواست‌های من
+
+درخواستی ثبت نشده است.
+""",
+
+                reply_markup=home_keyboard()
+
+            )
+
+
+            return
+
+
+
+        text = "📋 درخواست‌های من\n\n"
+
+
+
+        for r in reqs[:10]:
+
+
+            text += (
+
+                f"🎫 {r['tracking_code']}\n"
+
+                f"🔧 {r['service']}\n"
+
+                f"📌 {r['status']}\n\n"
+
+            )
+
+
+
+        await query.edit_message_text(
+
+            text,
+
+            reply_markup=home_keyboard()
+
         )
 
         return
 
 
 
-    # STATUS CHANGE ADMIN
 
-    if user_id==ADMIN_ID:
-
-
-        if "|" in data:
-
-            action,code=data.split("|",1)
-
-            status=None
+    # ADMIN STATUS
 
 
-            if action=="doing":
-                status="🔵 در حال انجام"
+    if user_id == ADMIN_ID and "|" in data:
 
 
-            elif action=="done":
-                status="🟢 انجام شد"
+        action,code = data.split(
+            "|",
+            1
+        )
 
 
-            elif action=="reject":
-                status="🔴 رد شد"
+        status = None
 
 
 
-            if status:
+        if action == "doing":
+
+            status = "🔵 در حال انجام"
 
 
-                update_status(
-                    code,
-                    status
-                )
+
+        elif action == "done":
+
+            status = "🟢 انجام شد"
 
 
-                request=get_request(code)
+
+        elif action == "reject":
+
+            status = "🔴 رد شد"
 
 
-                if request:
 
-                    try:
 
-                        await context.bot.send_message(
-                            request["user_id"],
-                            f"""
+        if status:
+
+
+            update_status(
+                code,
+                status
+            )
+
+
+
+            req = get_request(
+                code
+            )
+
+
+
+            if req:
+
+                await context.bot.send_message(
+
+                    req["user_id"],
+
+f"""
 🔔 وضعیت درخواست شما تغییر کرد
 
-🎫 کد رهگیری:
+🎫 کد:
 {code}
 
 📌 وضعیت جدید:
+
 {status}
 """
-                        )
 
-                    except:
-                        pass
-
-
-
-                await query.edit_message_text(
-                    query.message.text+
-                    f"\n\n📌 وضعیت جدید: {status}"
                 )
 
-                return
+
+
+            await query.edit_message_text(
+
+                query.message.text +
+
+                f"\n\n📌 وضعیت جدید: {status}"
+
+            )
+
+            return
 
 
 
 
-# =========================
+# =========================================================
 # TEXT HANDLER
-# =========================
-
-async def text_handler(update:Update,
-                       context:ContextTypes.DEFAULT_TYPE):
-
-    user=update.effective_user
-    uid=user.id
-    text=update.message.text.strip()
+# =========================================================
 
 
-    state=USER_STATES.get(uid)
+async def text_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+
+    user = update.effective_user
+
+    uid = user.id
+
+    text = update.message.text.strip()
+
+
+
+    state = USER_STATES.get(
+        uid
+    )
 
 
     if not state:
@@ -834,53 +1674,76 @@ async def text_handler(update:Update,
 
 
 
+    current = state["state"]
+
+
+
+
     # ADMIN ADD REG
 
-    if state["state"]==STATE_ADMIN_ADD_REG:
+
+    if current == STATE_ADMIN_ADD_REG:
 
 
-        if uid!=ADMIN_ID:
-            return
+        add_registration(
+            text
+        )
 
 
-        add_registration(text)
-
-        USER_STATES.pop(uid,None)
+        USER_STATES.pop(
+            uid,
+            None
+        )
 
 
         await update.message.reply_text(
-            f"""
+
+f"""
 ✅ ثبت‌نام اضافه شد
 
 📝 {text}
 """,
+
             reply_markup=main_keyboard(uid)
+
         )
 
         return
 
 
 
+
+
     # TRACKING
 
-    if state["state"]==STATE_TRACKING:
+
+    if current == STATE_TRACKING:
 
 
-        request=get_request(text)
+        req = get_request(
+            text
+        )
 
 
-        if not request:
+
+        if not req:
+
 
             await update.message.reply_text(
+
                 "❌ کد رهگیری پیدا نشد."
             )
+
             return
 
 
 
-        if request["user_id"]!=uid and uid!=ADMIN_ID:
+
+        if req["user_id"] != uid and uid != ADMIN_ID:
+
 
             await update.message.reply_text(
+
                 "❌ این درخواست متعلق به شما نیست."
             )
 
@@ -888,30 +1751,53 @@ async def text_handler(update:Update,
 
 
 
-        USER_STATES.pop(uid,None)
-
-
-        await send_request_details(
+        USER_STATES.pop(
             uid,
-            request,
-            context
+            None
         )
+
+
+
+        await update.message.reply_text(
+
+f"""
+📋 جزئیات درخواست
+
+🎫 کد:
+{req['tracking_code']}
+
+🔧 خدمت:
+{req['service']}
+
+📌 وضعیت:
+{req['status']}
+
+📝 توضیحات:
+{req['description']}
+""",
+
+            reply_markup=home_keyboard()
+
+        )
+
 
         return
 
 
 
-
-# =========================
+# =========================================================
 # MAIN
-# =========================
+# =========================================================
+
 
 def main():
+
 
     init_db()
 
 
-    app=Application.builder().token(
+
+    app = Application.builder().token(
         BOT_TOKEN
     ).build()
 
@@ -925,11 +1811,13 @@ def main():
     )
 
 
+
     app.add_handler(
         CallbackQueryHandler(
             callback_handler
         )
     )
+
 
 
     app.add_handler(
@@ -946,9 +1834,11 @@ def main():
     )
 
 
+
     app.run_polling()
 
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
+
     main()
