@@ -19,7 +19,7 @@ from telegram.ext import (
 # =========================================================
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID_RAW = os.getenv("ADMIN_ID")
+ADMIN_ID_RAW = os.getenv("8782979584")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set.")
