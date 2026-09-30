@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -435,16 +435,26 @@ def main_keyboard(user_id=None):
             )
         ],
         [
+            InlineKeyboardButton("⚖️ قضایی", callback_data="service|judicial"),
             InlineKeyboardButton("🚗 خودرو", callback_data="service|vehicle"),
+        ],
+        [
+            InlineKeyboardButton("🎓 آموزشی و دانشگاهی", callback_data="service|education"),
+        ],
+        [
+            InlineKeyboardButton("💰 وام و تسهیلات", callback_data="service|loan"),
+            InlineKeyboardButton("🏠 مسکن و املاک", callback_data="service|housing"),
+        ],
+        [
+            InlineKeyboardButton("📊 مالی و مالیاتی", callback_data="service|tax"),
             InlineKeyboardButton("🛡 بیمه", callback_data="service|insurance"),
         ],
         [
-            InlineKeyboardButton("💰 مالیاتی", callback_data="service|tax"),
-            InlineKeyboardButton("⚖️ قضایی", callback_data="service|judicial"),
+            InlineKeyboardButton("🏛 خدمات دولتی", callback_data="service|government"),
+            InlineKeyboardButton("🏦 بانکی", callback_data="service|bank"),
         ],
         [
-            InlineKeyboardButton("🏦 بانکی", callback_data="service|bank"),
-            InlineKeyboardButton("💵 وام", callback_data="service|loan"),
+            InlineKeyboardButton("✈️ سفر و بلیت", callback_data="service|travel"),
         ],
         [
             InlineKeyboardButton("🔎 پیگیری درخواست", callback_data="tracking"),
@@ -780,6 +790,35 @@ SERVICE_CATEGORIES = {
         "💼 وام اشتغال",
         "💰 سایر تسهیلات حمایتی",
     ]),
+    "education": ("🎓 خدمات آموزشی و دانشگاهی", [
+        "📝 ثبت‌نام کنکور",
+        "💼 آزمون استخدامی",
+        "📚 آزمون فنی‌وحرفه‌ای",
+        "🏫 ثبت‌نام مدارس",
+        "📖 ثبت‌نام کتاب درسی",
+        "🎓 ثبت‌نام دانشگاه",
+        "🔎 انتخاب رشته",
+    ]),
+    "housing": ("🏠 خدمات مسکن و املاک", [
+        "🏠 طرح‌های حمایتی مسکن",
+        "🏢 سامانه املاک و اسکان",
+        "📝 ثبت قرارداد اجاره",
+        "🔎 دریافت کد رهگیری اجاره",
+        "🏡 خدمات املاک",
+    ]),
+    "government": ("🏛 خدمات دولتی", [
+        "💳 خدمات یارانه",
+        "📊 اعتراض به دهک‌بندی",
+        "🪪 خدمات ثبت احوال",
+        "🆔 خدمات کارت ملی",
+        "🏛 سایر خدمات دولتی",
+    ]),
+    "travel": ("✈️ خدمات سفر و بلیت", [
+        "✈️ بلیت هواپیما",
+        "🚆 بلیت قطار",
+        "🚌 بلیت اتوبوس",
+        "🏨 رزرو اقامتگاه",
+    ]),
 }
 
 
@@ -918,6 +957,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_bot_closed() and user.id != ADMIN_ID:
         await update.message.reply_text(closed_text())
         return
+
+    # Remove any old Reply Keyboard from previous bot versions.
+    # Telegram cannot show ReplyKeyboardRemove and InlineKeyboardMarkup
+    # in the same message, so we send the removal first and the real
+    # inline menu immediately afterwards.
+    await update.message.reply_text(
+        "🔄 منوی قبلی حذف شد.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
 
     await update.message.reply_text(
         "🌐 کافی‌نت آنلاین ۲۴\n"
