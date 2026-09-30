@@ -348,7 +348,7 @@ def get_stats():
         "done": done,
         "rejected": rejected,
         "users": users,
-    }    }
+    }
 
 
 # =========================
@@ -699,249 +699,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 async def about_page(query):
     await query.edit_message_text(
-        "ℹ️ درباره کافی‌نت آنلاین ۲۴\n\n"
-        "🌐 ارائه خدمات و ثبت درخواست‌های آنلاین\n"
-        "⚡ سریع، ساده و بدون نیاز به مراجعه حضوری\n\n"
-        f"📢 کانال:\n{CHANNEL_LINK}\n\n"
-        f"🤖 ربات:\n{BOT_LINK}",
-        reply_markup=home_keyboard(),
-    )
-
-
-# =========================
-# ONLINE REGISTRATIONS
-# =========================
-async def show_online_registrations(query):
-    registrations = get_today_registrations()
-
-    if registrations:
-        text = (
-            "📝 ثبت‌نام‌های آنلاین امروز\n\n"
-            "ثبت‌نام موردنظر خود را انتخاب کنید:"
-        )
-    else:
-        text = (
-            "📝 ثبت‌نام‌های آنلاین امروز\n\n"
-            "فعلاً ثبت‌نامی برای امروز ثبت نشده است.\n"
-            "در صورت نبودن ثبت‌نام موردنظر، گزینه "
-            "«➕ سایر ثبت‌نام‌ها» را انتخاب کنید."
-        )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=registrations_keyboard(),
-    )
-
-
-async def select_registration(query, reg_id):
-    registration = get_registration(reg_id)
-
-    if not registration:
-        await query.answer(
-            "این ثبت‌نام فعال نیست.",
-            show_alert=True,
-        )
-        return
-
-    USER_STATES[query.from_user.id] = {
-        "state": STATE_NAME,
-        "category": "📝 ثبت‌نام‌های آنلاین",
-        "service": registration["title"],
-    }
-
-    await query.edit_message_text(
-        f"📝 ثبت‌نام: {registration['title']}\n\n"
-        "👤 لطفاً نام و نام خانوادگی خود را ارسال کنید:"
-    )
-
-
-async def other_registration(query):
-    USER_STATES[query.from_user.id] = {
-        "state": STATE_NAME,
-        "category": "📝 ثبت‌نام‌های آنلاین",
-        "service": "➕ سایر ثبت‌نام‌ها",
-    }
-
-    await query.edit_message_text(
-        "➕ سایر ثبت‌نام‌ها\n\n"
-        "ثبت‌نام موردنظر شما در فهرست امروز نیست.\n\n"
-        "👤 لطفاً نام و نام خانوادگی خود را ارسال کنید:"
-    )
-
-
-# =========================
-# TRACKING
-# =========================
-async def tracking_page(query):
-    USER_STATES[query.from_user.id] = {
-        "state": STATE_TRACKING,
-    }
-
-    await query.edit_message_text(
-        "🔎 پیگیری درخواست\n\n"
-        "🎫 کد رهگیری خود را ارسال کنید.\n"
-        "مثال: CF10001"
-    )
-
-
-# =========================
-# MY REQUESTS
-# =========================
-async def my_requests_page(query):
-    user_id = query.from_user.id
-    rows = get_user_requests(user_id)
-
-    if not rows:
-        await query.edit_message_text(
-            "📋 درخواست‌های من\n\n"
-            "هنوز هیچ درخواستی ثبت نکرده‌اید.",
-            reply_markup=home_keyboard(),
-        )
-        return
-
-    text = "📋 درخواست‌های من\n\n"
-
-    for row in rows:
-        text += (
-            f"🎫 {row['tracking_code']}\n"
-            f"🔧 {row['service']}\n"
-            f"📌 {row['status']}\n"
-            f"🕐 {row['created_at']}\n\n"
-        )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=home_keyboard(),
-    )
-
-
-# =========================
-# SUPPORT
-# =========================
-async def support_page(query):
-    USER_STATES[query.from_user.id] = {
-        "state": STATE_SUPPORT,
-    }
-
-    await query.edit_message_text(
-        "💬 پشتیبانی\n\n"
-        "پیام خود را برای پشتیبانی ارسال کنید:"
-    )
-
-
-async def save_support_message(user_id, message):
-    conn = get_db()
-    conn.execute(
-        """
-        INSERT INTO support_messages(
-            user_id,
-            message,
-            created_at,
-            replied
-        )
-        VALUES(?,?,?,0)
-        """,
-        (
-            user_id,
-            message,
-            now_text(),
-        ),
-    )
-    conn.commit()
-    conn.close()
-
-
-# =========================
-# ADMIN PANEL
-# =========================
-async def admin_panel(query):
-    if query.from_user.id != ADMIN_ID:
-        await query.answer(
-            "دسترسی غیرمجاز.",
-            show_alert=True,
-        )
-        return
-
-    await query.edit_message_text(
-        "🛠 پنل مدیریت\n\n"
-        "یکی از گزینه‌های زیر را انتخاب کنید:",
-        reply_markup=admin_keyboard(),
-    )
-
-
-async def admin_add_registration(query):
-    if query.from_user.id != ADMIN_ID:
-        return
-
-    USER_STATES[query.from_user.id] = {
-        "state": STATE_ADMIN_ADD_REG,
-    }
-
-    await query.edit_message_text(
-        "📝 افزودن ثبت‌نام امروز\n\n"
-        "عنوان ثبت‌نام را دقیقاً به صورت متنی ارسال کنید.\n\n"
-        "مثال:\n"
-        "ثبت‌نام آزمون استخدامی آموزش و پرورش"
-    )
-
-
-async def admin_requests_page(query):
-    if query.from_user.id != ADMIN_ID:
-        return
-
-    conn = get_db()
-    rows = conn.execute(
-        """
-        SELECT *
-        FROM requests
-        WHERE status=?
-        ORDER BY id DESC
-        LIMIT 30
-        """,
-        ("🟡 در انتظار بررسی",),
-    ).fetchall()
-    conn.close()
-
-    if not rows:
-        await query.edit_message_text(
-            "📋 درخواست جدیدی وجود ندارد.",
-            reply_markup=admin_keyboard(),
-        )
-        return
-
-    text = "📋 درخواست‌های جدید\n\n"
-    buttons = []
-
-    for row in rows:
-        text += (
-            f"🎫 {row['tracking_code']}\n"
-            f"👤 {row['full_name']}\n"
-            f"🔧 {row['service']}\n"
-            f"🕐 {row['created_at']}\n\n"
-        )
-
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    f"📄 {row['tracking_code']}",
-                    callback_data=f"adminreq|{row['tracking_code']}",
-                )
-            ]
-        )
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                "🔙 پنل مدیریت",
-                callback_data="admin_panel",
-            )
-        ]
-    )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )    await query.edit_message_text(
         "⚡️ کافی‌نت آنلاین 24\n"
         "سامانه هوشمند ثبت و پیگیری خدمات آنلاین\n\n"
         "📝 ثبت درخواست‌های آنلاین\n"
@@ -1290,7 +1047,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🔧 {r['service']}\n"
                 f"📌 {r['status']}\n\n"
             )
-            buttons.append(                [
+            buttons.append(
+                [
                     InlineKeyboardButton(
                         r["tracking_code"],
                         callback_data=f"admin_view|{r['tracking_code']}",
@@ -1639,13 +1397,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid != ADMIN_ID:
             return
 
-        USER_STATES.pop(uid, None)    # =====================
-    # BROADCAST
-    # =====================
-    if current_state == STATE_BROADCAST:
-        if uid != ADMIN_ID:
-            return
-
         USER_STATES.pop(uid, None)
 
         conn = get_db()
@@ -1787,13 +1538,6 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🛠 پنل مدیریت کافی‌نت آنلاین ۲۴",
         reply_markup=admin_keyboard(),
     )
-
-
-# =========================
-# ERROR HANDLER
-# =========================
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.exception("Unhandled exception:", exc_info=context.error)    )
 
 
 # =========================
