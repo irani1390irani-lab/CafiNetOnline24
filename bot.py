@@ -863,7 +863,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # in the same message, so we send the removal first and the real
     # inline menu immediately afterwards.
     await update.message.reply_text(
-        "🔄 منوی قبلی حذف شد.",
+        "​",
         reply_markup=ReplyKeyboardRemove(),
     )
 
