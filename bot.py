@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -435,26 +435,16 @@ def main_keyboard(user_id=None):
             )
         ],
         [
-            InlineKeyboardButton("⚖️ قضایی", callback_data="service|judicial"),
             InlineKeyboardButton("🚗 خودرو", callback_data="service|vehicle"),
-        ],
-        [
-            InlineKeyboardButton("🎓 آموزشی و دانشگاهی", callback_data="service|education"),
-        ],
-        [
-            InlineKeyboardButton("💰 وام و تسهیلات", callback_data="service|loan"),
-            InlineKeyboardButton("🏠 مسکن و املاک", callback_data="service|housing"),
-        ],
-        [
-            InlineKeyboardButton("📊 مالی و مالیاتی", callback_data="service|tax"),
             InlineKeyboardButton("🛡 بیمه", callback_data="service|insurance"),
         ],
         [
-            InlineKeyboardButton("🏛 خدمات دولتی", callback_data="service|government"),
-            InlineKeyboardButton("🏦 بانکی", callback_data="service|bank"),
+            InlineKeyboardButton("💰 مالیاتی", callback_data="service|tax"),
+            InlineKeyboardButton("⚖️ قضایی", callback_data="service|judicial"),
         ],
         [
-            InlineKeyboardButton("✈️ سفر و بلیت", callback_data="service|travel"),
+            InlineKeyboardButton("🏦 بانکی", callback_data="service|bank"),
+            InlineKeyboardButton("💵 وام", callback_data="service|loan"),
         ],
         [
             InlineKeyboardButton("🔎 پیگیری درخواست", callback_data="tracking"),
@@ -617,8 +607,108 @@ def status_keyboard(code):
 # =========================
 # ONLINE REGISTRATION MENU
 # =========================
-# ثبت‌نام‌های آنلاین کاملاً از پنل مدیریت کنترل می‌شوند.
-# هیچ فهرست ثابت یا دسته‌بندی hard-coded در این بخش وجود ندارد.
+# Fixed service catalogue for the "ثبت‌نام‌های آنلاین" section.
+# Each service opens the existing request form and gets its own category/service name.
+ONLINE_CATEGORIES = {
+    "judicial": ("⚖️ قضایی و حقوقی", [
+        "ثبت‌نام و احراز هویت ثنا",
+        "دریافت ابلاغیه قضایی",
+        "درخواست گواهی عدم سوءپیشینه",
+        "بازیابی اطلاعات ثنا",
+        "نوبت‌دهی خدمات قضایی",
+        "ثبت دادخواست و درخواست قضایی",
+    ]),
+    "vehicle": ("🚗 خودرو و پلیس", [
+        "ثبت‌نام ایران‌خودرو",
+        "ثبت‌نام سایپا",
+        "ثبت‌نام طرح‌های فروش خودرو",
+        "ثبت‌نام خودروهای فرسوده",
+        "نوبت تعویض پلاک خودرو",
+        "نوبت تعویض پلاک موتورسیکلت",
+        "خدمات کارت سوخت",
+        "خدمات سامانه سخا",
+    ]),
+    "education": ("🎓 آموزشی و دانشگاهی", [
+        "ثبت‌نام کنکور",
+        "خرید سریال و کارت آزمون",
+        "ثبت‌نام آزمون‌های استخدامی",
+        "ثبت‌نام آزمون‌های سازمان سنجش",
+        "ثبت‌نام آزمون‌های فنی‌وحرفه‌ای",
+        "ثبت‌نام مدارس",
+        "ثبت‌نام مدارس نمونه دولتی و سمپاد",
+        "ثبت‌نام کتاب درسی",
+        "ثبت‌نام دانشگاه",
+        "انتخاب رشته دانشگاه",
+        "انتخاب واحد دانشگاه",
+        "دریافت تأییدیه تحصیلی",
+    ]),
+    "loans": ("💰 وام و تسهیلات", [
+        "ثبت‌نام وام ازدواج",
+        "ثبت‌نام وام فرزندآوری",
+        "ثبت‌نام وام ودیعه مسکن",
+        "ثبت درخواست وام مسکن",
+        "ثبت درخواست تسهیلات حمایتی",
+    ]),
+    "housing": ("🏠 مسکن و املاک", [
+        "ثبت‌نام طرح‌های حمایتی مسکن",
+        "ثبت اطلاعات سامانه املاک و اسکان",
+        "ثبت قرارداد اجاره در سامانه خودنویس",
+        "دریافت کد رهگیری اجاره",
+        "خدمات سامانه ثبت من",
+    ]),
+    "finance": ("📊 مالی و مالیاتی", [
+        "ثبت‌نام سجام",
+        "احراز هویت سجام",
+        "دریافت و ثبت کد مالیاتی",
+        "ارسال اظهارنامه مالیاتی",
+        "پرداخت مالیات",
+        "اعتراض مالیاتی",
+        "دریافت ابلاغیه مالیاتی",
+    ]),
+    "insurance": ("🛡️ بیمه", [
+        "خدمات تأمین اجتماعی",
+        "دریافت سوابق بیمه",
+        "دریافت فیش و اطلاعات بیمه",
+        "ثبت‌نام بیمه ورزشی",
+        "خدمات بیمه خودرو",
+    ]),
+    "government": ("🏛️ خدمات دولتی", [
+        "ثبت‌نام و پیگیری یارانه",
+        "اعتراض به دهک‌بندی",
+        "خدمات ثبت احوال",
+        "خدمات کارت ملی",
+        "خدمات سامانه‌های دولتی",
+        "خدمات سامانه میخک",
+    ]),
+    "travel": ("✈️ سفر و بلیت", [
+        "خرید بلیت هواپیما",
+        "خرید بلیت قطار",
+        "خرید بلیت اتوبوس",
+        "رزرو اقامتگاه",
+        "نوبت‌دهی پزشکی",
+    ]),
+}
+
+
+def online_categories_keyboard():
+    rows = []
+    for key, (title, _) in ONLINE_CATEGORIES.items():
+        rows.append([InlineKeyboardButton(title, callback_data=f"online_cat|{key}")])
+
+    rows.append([InlineKeyboardButton("📅 ثبت‌نام‌های ویژه امروز", callback_data="today_regs")])
+    rows.append([InlineKeyboardButton("➕ سایر ثبت‌نام‌ها", callback_data="other_reg")])
+    rows.append([InlineKeyboardButton("🏠 بازگشت", callback_data="home")])
+    return InlineKeyboardMarkup(rows)
+
+
+def online_services_keyboard(category_key):
+    title, services = ONLINE_CATEGORIES[category_key]
+    rows = []
+    for index, service in enumerate(services):
+        rows.append([InlineKeyboardButton("📝 " + service, callback_data=f"online_service|{category_key}|{index}")])
+    rows.append([InlineKeyboardButton("🔙 دسته‌بندی‌ها", callback_data="online_regs")])
+    rows.append([InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")])
+    return InlineKeyboardMarkup(rows)
 
 
 def service_keyboard():
@@ -689,35 +779,6 @@ SERVICE_CATEGORIES = {
         "🏡 وام مسکن",
         "💼 وام اشتغال",
         "💰 سایر تسهیلات حمایتی",
-    ]),
-    "education": ("🎓 خدمات آموزشی و دانشگاهی", [
-        "📝 ثبت‌نام کنکور",
-        "💼 آزمون استخدامی",
-        "📚 آزمون فنی‌وحرفه‌ای",
-        "🏫 ثبت‌نام مدارس",
-        "📖 ثبت‌نام کتاب درسی",
-        "🎓 ثبت‌نام دانشگاه",
-        "🔎 انتخاب رشته",
-    ]),
-    "housing": ("🏠 خدمات مسکن و املاک", [
-        "🏠 طرح‌های حمایتی مسکن",
-        "🏢 سامانه املاک و اسکان",
-        "📝 ثبت قرارداد اجاره",
-        "🔎 دریافت کد رهگیری اجاره",
-        "🏡 خدمات املاک",
-    ]),
-    "government": ("🏛 خدمات دولتی", [
-        "💳 خدمات یارانه",
-        "📊 اعتراض به دهک‌بندی",
-        "🪪 خدمات ثبت احوال",
-        "🆔 خدمات کارت ملی",
-        "🏛 سایر خدمات دولتی",
-    ]),
-    "travel": ("✈️ خدمات سفر و بلیت", [
-        "✈️ بلیت هواپیما",
-        "🚆 بلیت قطار",
-        "🚌 بلیت اتوبوس",
-        "🏨 رزرو اقامتگاه",
     ]),
 }
 
@@ -858,15 +919,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(closed_text())
         return
 
-    # Remove any old Reply Keyboard from previous bot versions.
-    # Telegram cannot show ReplyKeyboardRemove and InlineKeyboardMarkup
-    # in the same message, so we send the removal first and the real
-    # inline menu immediately afterwards.
-    await update.message.reply_text(
-        "​",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
     await update.message.reply_text(
         "🌐 کافی‌نت آنلاین ۲۴\n"
         "به سامانه هوشمند خدمات آنلاین خوش آمدید.\n\n"
@@ -898,25 +950,65 @@ async def about_page(query):
 # ONLINE REGISTRATIONS
 # =========================
 async def show_online_registrations(query):
-    registrations = get_today_registrations()
+    await query.edit_message_text(
+        "📝 ثبت‌نام‌های آنلاین\n\n"
+        "دسته‌بندی موردنظر را انتخاب کنید:\n\n"
+        "هر خدمت بعد از انتخاب، مستقیماً به فرم ثبت درخواست متصل می‌شود.",
+        reply_markup=online_categories_keyboard(),
+    )
 
-    if registrations:
-        text = (
-            "📝 ثبت‌نام‌های آنلاین امروز\n\n"
-            "ثبت‌نام موردنظر خود را انتخاب کنید:"
-        )
-    else:
-        text = (
-            "📝 ثبت‌نام‌های آنلاین\n\n"
-            "فعلاً ثبت‌نامی برای امروز ثبت نشده است.\n\n"
-            "ثبت‌نام‌های جدید توسط مدیریت از پنل اضافه می‌شوند.\n"
-            "در صورت نیاز می‌توانید «➕ سایر ثبت‌نام‌ها» را انتخاب کنید."
-        )
+
+async def show_online_category(query, category_key):
+    if category_key not in ONLINE_CATEGORIES:
+        await query.answer("این دسته‌بندی موجود نیست.", show_alert=True)
+        return
+
+    title, services = ONLINE_CATEGORIES[category_key]
+    await query.edit_message_text(
+        f"{title}\n\n"
+        f"خدمت موردنظر را انتخاب کنید:\n\n"
+        f"📌 تعداد خدمات: {len(services)}",
+        reply_markup=online_services_keyboard(category_key),
+    )
+
+
+async def select_online_service(query, category_key, service_index):
+    if category_key not in ONLINE_CATEGORIES:
+        await query.answer("این دسته‌بندی موجود نیست.", show_alert=True)
+        return
+
+    title, services = ONLINE_CATEGORIES[category_key]
+    try:
+        service = services[service_index]
+    except (IndexError, TypeError):
+        await query.answer("این خدمت موجود نیست.", show_alert=True)
+        return
 
     await query.edit_message_text(
-        text,
-        reply_markup=registrations_keyboard(),
+        f"📝 {service}\n\n"
+        f"📂 دسته: {title}\n\n"
+        "برای ثبت این خدمت، دکمه زیر را بزنید.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📨 ثبت درخواست این خدمت", callback_data=f"online_start|{category_key}|{service_index}")],
+            [InlineKeyboardButton("🔙 بازگشت به خدمات", callback_data=f"online_cat|{category_key}")],
+            [InlineKeyboardButton("🏠 منوی اصلی", callback_data="home")],
+        ]),
     )
+
+
+async def start_online_service_request(query, category_key, service_index):
+    if category_key not in ONLINE_CATEGORIES:
+        await query.answer("این دسته‌بندی موجود نیست.", show_alert=True)
+        return
+
+    title, services = ONLINE_CATEGORIES[category_key]
+    try:
+        service = services[service_index]
+    except (IndexError, TypeError):
+        await query.answer("این خدمت موجود نیست.", show_alert=True)
+        return
+
+    await begin_request(query, title, service)
 
 
 async def show_today_registrations(query):
@@ -1009,6 +1101,41 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ONLINE REGISTRATION CATALOGUE
     if data == "online_regs":
         await show_online_registrations(query)
+        return
+
+    if data.startswith("online_cat|"):
+        category_key = data.split("|", 1)[1]
+        await show_online_category(query, category_key)
+        return
+
+    if data.startswith("online_service|"):
+        parts = data.split("|")
+        if len(parts) != 3:
+            await query.answer("درخواست نامعتبر است.", show_alert=True)
+            return
+        try:
+            service_index = int(parts[2])
+        except ValueError:
+            await query.answer("شناسه خدمت نامعتبر است.", show_alert=True)
+            return
+        await select_online_service(query, parts[1], service_index)
+        return
+
+    if data.startswith("online_start|"):
+        parts = data.split("|")
+        if len(parts) != 3:
+            await query.answer("درخواست نامعتبر است.", show_alert=True)
+            return
+        try:
+            service_index = int(parts[2])
+        except ValueError:
+            await query.answer("شناسه خدمت نامعتبر است.", show_alert=True)
+            return
+        await start_online_service_request(query, parts[1], service_index)
+        return
+
+    if data == "today_regs":
+        await show_today_registrations(query)
         return
 
     if data.startswith("reg|"):
