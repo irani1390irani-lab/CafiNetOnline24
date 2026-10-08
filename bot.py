@@ -557,7 +557,7 @@ def main_keyboard(user_id=None):
             InlineKeyboardButton("📋 درخواست‌های من", callback_data="my_requests"),
         ],
         [
-            InlineKeyboardButton("💬 پشتیبانی", callback_data="support"),
+            InlineKeyboardButton("💬 پشتیبانی", url="https://t.me/CafiNetOnlin_Support"),
             InlineKeyboardButton("ℹ️ درباره ما", callback_data="about"),
         ],
     ]
@@ -1048,7 +1048,20 @@ async def about_page(query):
         "⏰ ساعات فعالیت:\n"
         "هر روز از ۰۷:۰۰ تا ۲۳:۰۰\n\n"
         "⚠️ برای پیگیری درخواست، لطفاً منتظر پیام پشتیبانی باشید.",
-        reply_markup=home_keyboard(),
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "💬 ارتباط با پشتیبانی",
+                    url="https://t.me/CafiNetOnlin_Support"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏠 منوی اصلی",
+                    callback_data="home"
+                )
+            ],
+        ]),
     )
 
 
