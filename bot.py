@@ -4,7 +4,14 @@ import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -35,6 +42,7 @@ IRAN_TZ = ZoneInfo("Asia/Tehran")
 
 CHANNEL_LINK = "https://t.me/CafiNetOnlin24"
 BOT_LINK = "https://t.me/CafiNetOnlinBot"
+SUPPORT_USERNAME = "@CafiNetOnlin_Support"
 
 OPEN_HOUR = 7
 CLOSE_HOUR = 23
@@ -107,6 +115,14 @@ def init_db():
         """
     )
 
+    # اضافه کردن ستون دلیل رد شدن در صورت نبودن آن
+    try:
+        cur.execute(
+            "ALTER TABLE requests ADD COLUMN admin_reason TEXT DEFAULT ''"
+        )
+    except sqlite3.OperationalError:
+        pass
+
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS registrations(
@@ -119,8 +135,6 @@ def init_db():
         """
     )
 
-    # Users table makes broadcast work even for users
-    # who have not submitted a service request.
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS users(
@@ -133,7 +147,6 @@ def init_db():
         """
     )
 
-    # Support messages are stored so the admin can reply later.
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS support_messages(
@@ -191,6 +204,68 @@ STATE_ADMIN_SEARCH = "admin_search"
 STATE_ADMIN_ADD_REG = "admin_add_reg"
 STATE_BROADCAST = "broadcast"
 STATE_SUPPORT = "support"
+
+# حالت‌های جدید سایر خدمات
+STATE_OTHER_TITLE = "other_title"
+STATE_OTHER_DESCRIPTION = "other_description"
+
+# حالت دلیل رد درخواست توسط ادمین
+STATE_ADMIN_REJECT_REASON = "admin_reject_reason"
+
+
+# =========================
+# KEYBOARDS FOR INPUT
+# =========================
+def phone_keyboard():
+    return ReplyKeyboardMarkup(
+        [
+            [
+                KeyboardButton(
+                    "📱 ارسال شماره همراه",
+                    request_contact=True,
+                )
+            ]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
+def telegram_keyboard():
+    return ReplyKeyboardMarkup(
+        [
+            [
+                KeyboardButton("⏭ رد کردن")
+            ]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
+def reject_keyboard(code):
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "❌ رد بدون توضیح",
+                    callback_data=f"reject_no_reason|{code}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📝 وارد کردن دلیل",
+                    callback_data=f"reject_reason|{code}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 بازگشت",
+                    callback_data=f"admin_view|{code}",
+                )
+            ],
+        ]
+    )
 
 
 # =========================
@@ -288,6 +363,29 @@ def update_status(code, status):
         """,
         (status, now_text(), code),
     )
+    conn.commit()
+    conn.close()
+
+
+def update_rejection(code, reason=""):
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE requests
+        SET status=?,
+            admin_reason=?,
+            updated_at=?
+        WHERE tracking_code=?
+        """,
+        (
+            "🔴 رد شد",
+            reason,
+            now_text(),
+            code,
+        ),
+    )
+
     conn.commit()
     conn.close()
 
@@ -447,6 +545,12 @@ def main_keyboard(user_id=None):
             InlineKeyboardButton("💵 وام", callback_data="service|loan"),
         ],
         [
+            InlineKeyboardButton(
+                "🧩 سایر خدمات",
+                callback_data="other_services",
+            )
+        ],
+        [
             InlineKeyboardButton("🔎 پیگیری درخواست", callback_data="tracking"),
         ],
         [
@@ -578,6 +682,12 @@ def status_keyboard(code):
         [
             [
                 InlineKeyboardButton(
+                    "🟢 پذیرفتن درخواست",
+                    callback_data=f"accept|{code}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "🔵 در حال انجام",
                     callback_data=f"doing|{code}",
                 )
@@ -607,8 +717,6 @@ def status_keyboard(code):
 # =========================
 # ONLINE REGISTRATION MENU
 # =========================
-# This section is fully dynamic.
-# Registrations are added and removed only from the admin panel.
 def online_categories_keyboard():
     return registrations_keyboard()
 
@@ -616,8 +724,6 @@ def online_categories_keyboard():
 # =========================
 # MAIN SERVICE CATEGORIES
 # =========================
-# These menus belong to the main keyboard.
-# The separate "ثبت‌نام‌های آنلاین" section above is intentionally unchanged.
 SERVICE_CATEGORIES = {
     "vehicle": ("🚗 خدمات خودرو", [
         "🚘 ثبت‌نام ایران‌خودرو",
@@ -762,7 +868,13 @@ async def start_main_service_request(query, category_key, service_index):
 
 
 def format_request_details(request):
-    return (
+    reason = ""
+    try:
+        reason = request["admin_reason"] or ""
+    except (IndexError, KeyError):
+        reason = ""
+
+    result = (
         "📋 جزئیات درخواست\n\n"
         f"🎫 کد رهگیری: {request['tracking_code']}\n"
         f"📂 دسته: {request['category']}\n"
@@ -775,6 +887,11 @@ def format_request_details(request):
         f"🕐 زمان ثبت: {request['created_at']}\n"
         f"🔄 آخرین بروزرسانی: {request['updated_at']}"
     )
+
+    if reason:
+        result += f"\n\n📝 دلیل رد:\n{reason}"
+
+    return result
 
 
 async def send_request_details(chat_id, request, context, include_home=True):
@@ -790,6 +907,7 @@ async def begin_request(query, category, service):
         "state": STATE_NAME,
         "category": category,
         "service": service,
+        "other_service": False,
     }
 
     await query.edit_message_text(
@@ -801,9 +919,103 @@ async def begin_request(query, category, service):
 
 
 # =========================
-# START
+# OTHER SERVICES
 # =========================
+async def start_other_services(query):
+    USER_STATES[query.from_user.id] = {
+        "state": STATE_OTHER_TITLE,
+        "category": "🧩 سایر خدمات",
+        "service": "",
+        "other_service": True,
+    }
 
+    await query.edit_message_text(
+        "🧩 سایر خدمات\n\n"
+        "اگر خدمت موردنظر شما در منو وجود ندارد، می‌توانید درخواست خود را ثبت کنید.\n\n"
+        "📝 لطفاً عنوان خدمت موردنظر را ارسال کنید:"
+    )
+
+
+async def show_other_summary(update, state):
+    telegram_id = state.get("telegram_id", "")
+
+    await update.message.reply_text(
+        "📋 بررسی اطلاعات درخواست\n\n"
+        f"🧩 عنوان خدمت:\n{state.get('service', '')}\n\n"
+        f"📄 توضیحات:\n{state.get('description', '') or 'بدون توضیح'}\n\n"
+        f"👤 نام و نام خانوادگی:\n{state.get('full_name', '')}\n\n"
+        f"📱 شماره همراه:\n{state.get('phone', '')}\n\n"
+        f"🆔 آیدی تلگرام:\n{telegram_id or 'ثبت نشده'}\n\n"
+        "آیا اطلاعات بالا صحیح است؟",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "✅ تأیید",
+                        callback_data="other_confirm",
+                    ),
+                    InlineKeyboardButton(
+                        "❌ لغو",
+                        callback_data="other_cancel",
+                    ),
+                ]
+            ]
+        ),
+    )
+
+
+async def create_other_request(update, context):
+    user = update.effective_user
+    uid = user.id
+    state = USER_STATES.get(uid)
+
+    if not state:
+        return
+
+    request = create_request(
+        user_id=uid,
+        username=user.username or "",
+        full_name=state.get("full_name", ""),
+        phone=state.get("phone", ""),
+        telegram_id=state.get("telegram_id", ""),
+        description=state.get("description", ""),
+        category=state.get("category", "🧩 سایر خدمات"),
+        service=state.get("service", ""),
+    )
+
+    USER_STATES.pop(uid, None)
+
+    await context.bot.send_message(
+        uid,
+        "✅ درخواست شما با موفقیت ثبت شد.\n\n"
+        "📩 درخواست شما برای پشتیبانی ارسال شد.\n"
+        "⏳ لطفاً منتظر پیام پشتیبانی باشید.\n\n"
+        f"🆔 پشتیبانی:\n{SUPPORT_USERNAME}\n\n"
+        "⚠️ لطفاً به پشتیبانی پیام ندهید؛\n"
+        "پشتیبانی پس از بررسی درخواست، خودش با شما ارتباط خواهد گرفت.\n\n"
+        f"🎫 کد پیگیری: {request['tracking_code']}",
+        reply_markup=home_keyboard(),
+    )
+
+    try:
+        await context.bot.send_message(
+            ADMIN_ID,
+            "🔔 درخواست جدید ثبت شد.\n\n"
+            f"🎫 {request['tracking_code']}\n"
+            f"📂 دسته: {request['category']}\n"
+            f"🔧 خدمت: {request['service']}\n"
+            f"👤 نام: {request['full_name']}\n"
+            f"📱 شماره: {request['phone']}\n"
+            f"🆔 تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
+            f"📝 توضیحات:\n{request['description'] or 'بدون توضیح'}\n\n"
+            "برای مدیریت درخواست از پنل مدیریت استفاده کنید.",
+        )
+    except Exception:
+        logger.exception("Could not notify admin about other service request")
+
+
+# =========================
+# START
 # =========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -827,16 +1039,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 async def about_page(query):
     await query.edit_message_text(
-        "⚡️ کافی‌نت آنلاین 24\n"
-        "سامانه هوشمند ثبت و پیگیری خدمات آنلاین\n\n"
-        "📝 ثبت درخواست‌های آنلاین\n"
-        "🔎 پیگیری آسان با کد رهگیری\n"
-        "💬 ارتباط مستقیم با پشتیبانی\n"
-        "🚀 خدمات سریع و ساده\n\n"
+        "ℹ️ درباره ما\n\n"
+        "🖥️ کافی‌نت آنلاین ۲۴\n\n"
+        "ارائه خدمات و ثبت درخواست‌های آنلاین به‌صورت غیرحضوری.\n\n"
+        f"📩 پشتیبانی:\n{SUPPORT_USERNAME}\n\n"
         f"📢 کانال رسمی:\n{CHANNEL_LINK}\n\n"
         f"🤖 ربات خدمات:\n{BOT_LINK}\n\n"
-        "🤖 فعالیت ربات: ۰۷:۰۰ تا ۲۳:۰۰\n"
-        "🌙 از ۲۳:۰۰ تا ۰۷:۰۰ ربات غیرفعال است.",
+        "⏰ ساعات فعالیت:\n"
+        "هر روز از ۰۷:۰۰ تا ۲۳:۰۰\n\n"
+        "⚠️ برای پیگیری درخواست، لطفاً منتظر پیام پشتیبانی باشید.",
         reply_markup=home_keyboard(),
     )
 
@@ -884,6 +1095,7 @@ async def select_registration(query, reg_id):
         "state": STATE_NAME,
         "category": "📅 ثبت‌نام‌های ویژه امروز",
         "service": registration["title"],
+        "other_service": False,
     }
 
     await query.edit_message_text(
@@ -897,6 +1109,7 @@ async def other_registration(query):
         "state": STATE_NAME,
         "category": "📝 سایر ثبت‌نام‌ها",
         "service": "➕ سایر ثبت‌نام‌ها",
+        "other_service": False,
     }
 
     await query.edit_message_text(
@@ -919,7 +1132,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     data = query.data or ""
 
-    # Closed hours
     if (
         is_bot_closed()
         and user_id != ADMIN_ID
@@ -944,6 +1156,40 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ABOUT
     if data == "about":
         await about_page(query)
+        return
+
+    # OTHER SERVICES
+    if data == "other_services":
+        await start_other_services(query)
+        return
+
+    if data == "other_cancel":
+        USER_STATES.pop(user_id, None)
+
+        await query.edit_message_text(
+            "❌ ثبت درخواست لغو شد.",
+            reply_markup=main_keyboard(user_id),
+        )
+        return
+
+    if data == "other_confirm":
+        if user_id not in USER_STATES:
+            await query.answer(
+                "اطلاعات درخواست پیدا نشد.",
+                show_alert=True,
+            )
+            return
+
+        state = USER_STATES[user_id]
+
+        if not state.get("other_service"):
+            await query.answer(
+                "درخواست نامعتبر است.",
+                show_alert=True,
+            )
+            return
+
+        await create_other_request(update, context)
         return
 
     # ONLINE REGISTRATION CATALOGUE
@@ -1204,6 +1450,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += (
                 f"🎫 {r['tracking_code']}\n"
                 f"🔧 {r['service']}\n"
+                f"👤 {r['full_name']}\n"
                 f"📌 {r['status']}\n\n"
             )
             buttons.append(
@@ -1246,15 +1493,136 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         await query.edit_message_text(
-            "📋 درخواست\n\n"
-            f"🎫 {request['tracking_code']}\n"
-            f"👤 {request['full_name']}\n"
-            f"📱 {request['phone']}\n"
-            f"🔧 {request['service']}\n"
-            f"📝 {request['description'] or 'بدون توضیح'}\n\n"
-            f"📌 وضعیت:\n{request['status']}\n"
-            f"🕐 ثبت: {request['created_at']}",
+            format_request_details(request),
             reply_markup=status_keyboard(code),
+        )
+        return
+
+    # ACCEPT REQUEST
+    if data.startswith("accept|"):
+        if user_id != ADMIN_ID:
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        # پذیرفته شدن درخواست = در حال انجام
+        update_status(code, "🔵 در حال انجام")
+        request = get_request(code)
+
+        try:
+            await context.bot.send_message(
+                request["user_id"],
+                "🟢 درخواست شما توسط پشتیبانی پذیرفته شد.\n\n"
+                "⏳ به‌زودی پشتیبانی با شما ارتباط خواهد گرفت.\n\n"
+                f"🎫 کد پیگیری: {code}",
+            )
+        except Exception:
+            logger.exception(
+                "Could not notify user about accepted request %s",
+                code,
+            )
+
+        await query.edit_message_text(
+            "✅ درخواست پذیرفته شد.\n\n"
+            f"🎫 {code}\n"
+            "📌 وضعیت: 🔵 در حال انجام",
+            reply_markup=admin_keyboard(),
+        )
+        return
+
+    # REJECT REQUEST MENU
+    if data.startswith("reject|"):
+        if user_id != ADMIN_ID:
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        await query.edit_message_text(
+            "🔴 رد درخواست\n\n"
+            f"🎫 کد پیگیری: {code}\n\n"
+            "آیا می‌خواهید دلیل رد برای کاربر ارسال شود؟",
+            reply_markup=reject_keyboard(code),
+        )
+        return
+
+    # REJECT WITHOUT REASON
+    if data.startswith("reject_no_reason|"):
+        if user_id != ADMIN_ID:
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        update_rejection(code, "")
+        request = get_request(code)
+
+        try:
+            await context.bot.send_message(
+                request["user_id"],
+                "🔴 درخواست شما توسط پشتیبانی رد شد.\n\n"
+                f"🎫 کد پیگیری: {code}",
+            )
+        except Exception:
+            logger.exception(
+                "Could not notify user about rejected request %s",
+                code,
+            )
+
+        await query.edit_message_text(
+            "✅ درخواست رد شد.\n\n"
+            f"🎫 {code}\n"
+            "📌 وضعیت: 🔴 رد شد",
+            reply_markup=admin_keyboard(),
+        )
+        return
+
+    # REJECT WITH REASON
+    if data.startswith("reject_reason|"):
+        if user_id != ADMIN_ID:
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        USER_STATES[user_id] = {
+            "state": STATE_ADMIN_REJECT_REASON,
+            "code": code,
+        }
+
+        await query.edit_message_text(
+            "📝 دلیل رد درخواست\n\n"
+            f"🎫 کد پیگیری: {code}\n\n"
+            "لطفاً دلیل رد درخواست را ارسال کنید."
         )
         return
 
@@ -1265,7 +1633,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status_map = {
             "doing": "🔵 در حال انجام",
             "done": "🟢 انجام شد",
-            "reject": "🔴 رد شد",
         }
 
         status = status_map.get(action)
@@ -1293,7 +1660,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "استفاده کنید.",
                 )
             except Exception:
-                logger.exception("Could not notify user %s", request["user_id"])
+                logger.exception(
+                    "Could not notify user %s",
+                    request["user_id"],
+                )
 
             await query.edit_message_text(
                 "✅ وضعیت درخواست بروزرسانی شد.\n\n"
@@ -1417,6 +1787,44 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
+# CONTACT HANDLER
+# =========================
+async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    uid = user.id
+
+    save_user(user)
+
+    if is_bot_closed() and uid != ADMIN_ID:
+        await update.message.reply_text(closed_text())
+        return
+
+    state = USER_STATES.get(uid)
+
+    if not state or state.get("state") != STATE_PHONE:
+        return
+
+    contact = update.message.contact
+
+    # فقط شماره خود کاربر پذیرفته شود
+    if contact.user_id and contact.user_id != uid:
+        await update.message.reply_text(
+            "❌ لطفاً شماره موبایل خودتان را با دکمه ارسال شماره همراه بفرستید."
+        )
+        return
+
+    state["phone"] = contact.phone_number
+    state["state"] = STATE_TELEGRAM
+    USER_STATES[uid] = state
+
+    await update.message.reply_text(
+        "🆔 آیدی تلگرام خود را ارسال کنید.\n\n"
+        "اگر ندارید، روی «⏭ رد کردن» بزنید.",
+        reply_markup=telegram_keyboard(),
+    )
+
+
+# =========================
 # TEXT HANDLER
 # =========================
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1522,6 +1930,61 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # =====================
+    # ADMIN REJECT REASON
+    # =====================
+    if current_state == STATE_ADMIN_REJECT_REASON:
+        if uid != ADMIN_ID:
+            return
+
+        code = state.get("code")
+
+        if not code:
+            USER_STATES.pop(uid, None)
+            await update.message.reply_text(
+                "❌ کد درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        request = get_request(code)
+
+        if not request:
+            USER_STATES.pop(uid, None)
+            await update.message.reply_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        reason = text
+
+        update_rejection(code, reason)
+        request = get_request(code)
+
+        USER_STATES.pop(uid, None)
+
+        try:
+            await context.bot.send_message(
+                request["user_id"],
+                "🔴 درخواست شما توسط پشتیبانی رد شد.\n\n"
+                "📝 توضیحات پشتیبانی:\n"
+                f"{reason}\n\n"
+                f"🎫 کد پیگیری: {code}",
+            )
+        except Exception:
+            logger.exception(
+                "Could not notify user about rejected request %s",
+                code,
+            )
+
+        await update.message.reply_text(
+            "✅ درخواست رد شد و دلیل برای کاربر ارسال شد.\n\n"
+            f"🎫 {code}",
+            reply_markup=admin_keyboard(),
+        )
+        return
+
+    # =====================
     # TRACKING
     # =====================
     if current_state == STATE_TRACKING:
@@ -1586,15 +2049,65 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # =====================
+    # OTHER SERVICE TITLE
+    # =====================
+    if current_state == STATE_OTHER_TITLE:
+        if not text:
+            await update.message.reply_text(
+                "❌ عنوان خدمت نمی‌تواند خالی باشد.\n\n"
+                "📝 لطفاً عنوان خدمت را ارسال کنید:"
+            )
+            return
+
+        state["service"] = text
+        state["state"] = STATE_OTHER_DESCRIPTION
+        USER_STATES[uid] = state
+
+        await update.message.reply_text(
+            "📄 لطفاً توضیحات و شرح درخواست خود را ارسال کنید:"
+        )
+        return
+
+    # =====================
+    # OTHER SERVICE DESCRIPTION
+    # =====================
+    if current_state == STATE_OTHER_DESCRIPTION:
+        if not text:
+            await update.message.reply_text(
+                "❌ توضیحات نمی‌تواند خالی باشد.\n\n"
+                "📄 لطفاً توضیحات درخواست را ارسال کنید:"
+            )
+            return
+
+        state["description"] = text
+        state["state"] = STATE_NAME
+        USER_STATES[uid] = state
+
+        await update.message.reply_text(
+            "👤 لطفاً نام و نام خانوادگی خود را ارسال کنید:"
+        )
+        return
+
+    # =====================
     # REQUEST NAME
     # =====================
     if current_state == STATE_NAME:
+        if not text:
+            await update.message.reply_text(
+                "❌ نام و نام خانوادگی نمی‌تواند خالی باشد.\n"
+                "لطفاً دوباره ارسال کنید:"
+            )
+            return
+
         state["full_name"] = text
         state["state"] = STATE_PHONE
         USER_STATES[uid] = state
 
         await update.message.reply_text(
-            "📱 لطفاً شماره موبایل خود را ارسال کنید:"
+            "📱 لطفاً شماره موبایل خود را ارسال کنید.\n\n"
+            "می‌توانید شماره را دستی وارد کنید یا روی دکمه "
+            "«📱 ارسال شماره همراه» بزنید.",
+            reply_markup=phone_keyboard(),
         )
         return
 
@@ -1602,12 +2115,23 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # REQUEST PHONE
     # =====================
     if current_state == STATE_PHONE:
-        cleaned = text.replace(" ", "").replace("-", "")
+        cleaned = (
+            text
+            .replace(" ", "")
+            .replace("-", "")
+            .replace("(", "")
+            .replace(")", "")
+        )
+
+        if cleaned.startswith("+"):
+            cleaned = cleaned[1:]
 
         if not cleaned.isdigit() or len(cleaned) < 10:
             await update.message.reply_text(
                 "❌ شماره موبایل معتبر نیست.\n"
-                "لطفاً دوباره شماره خود را ارسال کنید."
+                "لطفاً دوباره شماره خود را ارسال کنید یا از دکمه "
+                "«📱 ارسال شماره همراه» استفاده کنید.",
+                reply_markup=phone_keyboard(),
             )
             return
 
@@ -1617,7 +2141,8 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "🆔 آیدی تلگرام خود را ارسال کنید.\n\n"
-            "اگر ندارید، فقط بنویسید: ندارم"
+            "اگر ندارید، روی «⏭ رد کردن» بزنید.",
+            reply_markup=telegram_keyboard(),
         )
         return
 
@@ -1625,13 +2150,30 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # REQUEST TELEGRAM ID
     # =====================
     if current_state == STATE_TELEGRAM:
-        state["telegram_id"] = "" if text == "ندارم" else text
+        if text == "⏭ رد کردن" or text == "ندارم":
+            state["telegram_id"] = ""
+        else:
+            state["telegram_id"] = text
+
+        # برای سایر خدمات، بعد از آیدی تلگرام خلاصه و تأیید نمایش داده می‌شود
+        if state.get("other_service"):
+            USER_STATES[uid] = state
+
+            await update.message.reply_text(
+                "⏳ در حال آماده‌سازی اطلاعات درخواست...",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+
+            await show_other_summary(update, state)
+            return
+
         state["state"] = STATE_DESCRIPTION
         USER_STATES[uid] = state
 
         await update.message.reply_text(
             "📝 توضیحات درخواست را ارسال کنید.\n\n"
-            "اگر توضیح خاصی ندارید، بنویسید: ندارم"
+            "اگر توضیح خاصی ندارید، بنویسید: ندارم",
+            reply_markup=ReplyKeyboardRemove(),
         )
         return
 
@@ -1656,10 +2198,12 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "✅ درخواست شما با موفقیت ثبت شد.\n\n"
-            f"🎫 کد رهگیری: {request['tracking_code']}\n"
-            f"📌 وضعیت: {request['status']}\n\n"
-            "این کد را نزد خود نگه دارید تا بتوانید وضعیت درخواست "
-            "را پیگیری کنید.",
+            "📩 درخواست شما برای پشتیبانی ارسال شد.\n"
+            "⏳ لطفاً منتظر پیام پشتیبانی باشید.\n\n"
+            f"🆔 پشتیبانی:\n{SUPPORT_USERNAME}\n\n"
+            "⚠️ لطفاً به پشتیبانی پیام ندهید؛\n"
+            "پشتیبانی پس از بررسی درخواست، خودش با شما ارتباط خواهد گرفت.\n\n"
+            f"🎫 کد پیگیری: {request['tracking_code']}",
             reply_markup=home_keyboard(),
         )
 
@@ -1669,10 +2213,12 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ADMIN_ID,
                 "🔔 درخواست جدید ثبت شد.\n\n"
                 f"🎫 {request['tracking_code']}\n"
-                f"👤 {request['full_name']}\n"
-                f"📱 {request['phone']}\n"
-                f"🔧 {request['service']}\n"
-                f"📝 {request['description'] or 'بدون توضیح'}\n\n"
+                f"📂 دسته: {request['category']}\n"
+                f"🔧 خدمت: {request['service']}\n"
+                f"👤 نام: {request['full_name']}\n"
+                f"📱 شماره: {request['phone']}\n"
+                f"🆔 تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
+                f"📝 توضیحات:\n{request['description'] or 'بدون توضیح'}\n\n"
                 "برای مدیریت درخواست از پنل مدیریت استفاده کنید.",
             )
         except Exception:
@@ -1724,6 +2270,14 @@ def main():
 
     app.add_handler(
         CallbackQueryHandler(callback_handler)
+    )
+
+    # دریافت شماره از دکمه تماس
+    app.add_handler(
+        MessageHandler(
+            filters.CONTACT,
+            contact_handler,
+        )
     )
 
     app.add_handler(
