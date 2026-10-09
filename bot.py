@@ -1602,7 +1602,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "مشتری گرامی، لطفاً مبلغ زیر را به شماره کارت اعلام‌شده واریز کنید. ❤️\n\n"
             f"💰 مبلغ قابل پرداخت: {int(amount):,} ریال\n"
             f"🎫 کد پیگیری: {code}\n\n"
-            f"💳 شماره کارت: {PAYMENT_CARD_DISPLAY}\n"
+            f"💳 شماره کارت: \u2066{PAYMENT_CARD_DISPLAY}\u2069\n"
             f"👤 به نام: {PAYMENT_CARD_HOLDER}\n\n"
             "پس از پرداخت، لطفاً منتظر تأیید پشتیبانی باشید.\n"
             "در صورت نیاز به راهنمایی با پشتیبانی در ارتباط باشید:\n"
@@ -2115,7 +2115,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👤 مشتری: {request['full_name']}\n"
             f"🆔 شناسه کاربر: {request['user_id']}\n"
             f"💰 مبلغ: {amount:,} ریال\n"
-            f"💳 شماره کارت: {PAYMENT_CARD_DISPLAY}\n"
+            f"💳 شماره کارت: \u2066{PAYMENT_CARD_DISPLAY}\u2069\n"
             f"👤 صاحب کارت: {PAYMENT_CARD_HOLDER}\n\n"
             "آیا اطلاعات صحیح است؟",
             reply_markup=InlineKeyboardMarkup([
