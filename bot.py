@@ -8,6 +8,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    CopyTextButton,
     KeyboardButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -43,6 +44,11 @@ IRAN_TZ = ZoneInfo("Asia/Tehran")
 CHANNEL_LINK = "https://t.me/CafiNetOnlin24"
 BOT_LINK = "https://t.me/CafiNetOnlinBot"
 SUPPORT_USERNAME = "@CafiNetOnlin_Support"
+
+# اطلاعات ثابت پرداخت
+PAYMENT_CARD_NUMBER = "5022291529015099"
+PAYMENT_CARD_DISPLAY = "5022 2915 2901 5099"
+PAYMENT_CARD_HOLDER = "محمد مهدی ابدی"
 
 OPEN_HOUR = 7
 CLOSE_HOUR = 23
@@ -703,6 +709,16 @@ def status_keyboard(code):
                     "🔴 رد شد",
                     callback_data=f"reject|{code}",
                 )
+            ],
+            [
+                InlineKeyboardButton(
+                    "💳 ارسال شماره کارت",
+                    callback_data=f"send_card|{code}",
+                ),
+                InlineKeyboardButton(
+                    "✅ ثبت پرداخت کاربر",
+                    callback_data=f"payment_receipt|{code}",
+                ),
             ],
             [
                 InlineKeyboardButton(
@@ -1511,6 +1527,198 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # ADMIN SEND PAYMENT CARD: ask for amount
+    if data.startswith("send_card|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        USER_STATES[user_id] = {
+            "state": "admin_payment_amount",
+            "code": code,
+        }
+        await query.edit_message_text(
+            "💳 ارسال اطلاعات پرداخت\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            f"👤 مشتری: {request['full_name']}\n\n"
+            "مبلغ را به ریال و فقط به‌صورت عدد ارسال کنید.\n"
+            "مثال: ۶۰۰۰۰۰",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("❌ لغو", callback_data=f"payment_cancel|{code}")
+            ]]),
+        )
+        return
+
+    # EDIT PAYMENT AMOUNT
+    if data.startswith("payment_edit|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        if not request:
+            await query.edit_message_text("❌ درخواست پیدا نشد.", reply_markup=admin_keyboard())
+            return
+        USER_STATES[user_id] = {"state": "admin_payment_amount", "code": code}
+        await query.edit_message_text(
+            "✏️ اصلاح مبلغ پرداخت\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            "مبلغ صحیح را به ریال ارسال کنید:",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("❌ لغو", callback_data=f"payment_cancel|{code}")
+            ]]),
+        )
+        return
+
+    # CONFIRM SEND PAYMENT CARD
+    if data.startswith("payment_send_confirm|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        state = USER_STATES.get(user_id, {})
+        amount = state.get("amount") if state.get("state") == "admin_payment_confirm" and state.get("code") == code else None
+        if not request or not amount:
+            await query.edit_message_text(
+                "❌ اطلاعات پرداخت پیدا نشد. دوباره مبلغ را وارد کنید.",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 بازگشت", callback_data=f"send_card|{code}")
+                ]]),
+            )
+            return
+
+        payment_text = (
+            "💳 اطلاعات پرداخت | کافی‌نت آنلاین ۲۴\n\n"
+            "مشتری گرامی، لطفاً مبلغ زیر را به شماره کارت اعلام‌شده واریز کنید. ❤️\n\n"
+            f"💰 مبلغ قابل پرداخت: {int(amount):,} ریال\n"
+            f"🎫 کد پیگیری: {code}\n\n"
+            f"💳 شماره کارت: {PAYMENT_CARD_DISPLAY}\n"
+            f"👤 به نام: {PAYMENT_CARD_HOLDER}\n\n"
+            "پس از پرداخت، لطفاً منتظر تأیید پشتیبانی باشید.\n"
+            "در صورت نیاز به راهنمایی با پشتیبانی در ارتباط باشید:\n"
+            f"{SUPPORT_USERNAME}"
+        )
+        try:
+            await context.bot.send_message(
+                chat_id=request["user_id"],
+                text=payment_text,
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton(
+                        "📋 کپی شماره کارت",
+                        copy_text=CopyTextButton(text=PAYMENT_CARD_NUMBER),
+                    )
+                ]]),
+            )
+        except Exception:
+            logger.exception("Could not send payment details to user for %s", code)
+            await query.edit_message_text(
+                "❌ ارسال اطلاعات پرداخت به کاربر ناموفق بود. ممکن است کاربر ربات را شروع نکرده باشد.\n\n"
+                f"🎫 کد پیگیری: {code}",
+                reply_markup=status_keyboard(code),
+            )
+            return
+
+        USER_STATES.pop(user_id, None)
+        await query.edit_message_text(
+            "✅ اطلاعات پرداخت برای مشتری ارسال شد.\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            f"💰 مبلغ: {int(amount):,} ریال",
+            reply_markup=status_keyboard(code),
+        )
+        return
+
+    # CANCEL PAYMENT ACTION
+    if data.startswith("payment_cancel|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        USER_STATES.pop(user_id, None)
+        request = get_request(code)
+        if request:
+            await query.edit_message_text(
+                format_request_details(request),
+                reply_markup=status_keyboard(code),
+            )
+        else:
+            await query.edit_message_text("❌ درخواست پیدا نشد.", reply_markup=admin_keyboard())
+        return
+
+    # START PAYMENT RECEIPT CONFIRMATION
+    if data.startswith("payment_receipt|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        if not request:
+            await query.edit_message_text("❌ درخواست پیدا نشد.", reply_markup=admin_keyboard())
+            return
+        await query.edit_message_text(
+            "✅ تأیید پرداخت مشتری\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            f"👤 مشتری: {request['full_name']}\n\n"
+            "آیا پرداخت این مشتری را تأیید می‌کنید و پیام تأیید برای او ارسال شود؟\n"
+            "وضعیت خدمت تغییر نخواهد کرد.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ بله، تأیید پرداخت", callback_data=f"payment_receipt_confirm|{code}"),
+                ],
+                [
+                    InlineKeyboardButton("❌ لغو", callback_data=f"payment_cancel|{code}"),
+                ],
+            ]),
+        )
+        return
+
+    # CONFIRM PAYMENT RECEIPT; does not change request status
+    if data.startswith("payment_receipt_confirm|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        if not request:
+            await query.edit_message_text("❌ درخواست پیدا نشد.", reply_markup=admin_keyboard())
+            return
+        receipt_text = (
+            "🎉 پرداخت شما با موفقیت تأیید شد!\n\n"
+            "مشتری گرامی، از پرداخت شما و اعتمادتون به کافی‌نت آنلاین ۲۴ صمیمانه سپاسگزاریم. ❤️\n\n"
+            "✅ پرداخت شما توسط پشتیبانی تأیید شد.\n\n"
+            f"📌 کد پیگیری: {code}\n\n"
+            "در صورت نیاز به راهنمایی بیشتر، می‌تونید با پشتیبانی در ارتباط باشید.\n"
+            f"🆔 {SUPPORT_USERNAME}\n\n"
+            "کافی‌نت آنلاین ۲۴ | همراه شما در انجام خدمات آنلاین 🌟"
+        )
+        try:
+            await context.bot.send_message(chat_id=request["user_id"], text=receipt_text)
+        except Exception:
+            logger.exception("Could not send payment confirmation to user for %s", code)
+            await query.edit_message_text(
+                "❌ ارسال پیام تأیید پرداخت به کاربر ناموفق بود.\n\n"
+                f"🎫 کد پیگیری: {code}",
+                reply_markup=status_keyboard(code),
+            )
+            return
+        USER_STATES.pop(user_id, None)
+        await query.edit_message_text(
+            "✅ پرداخت مشتری تأیید شد و پیام برای او ارسال شد.\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            "📌 وضعیت درخواست تغییری نکرده است.",
+            reply_markup=status_keyboard(code),
+        )
+        return
+
     # ACCEPT REQUEST
     if data.startswith("accept|"):
         if user_id != ADMIN_ID:
@@ -1857,6 +2065,70 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     current_state = state.get("state")
+
+    # =====================
+    # ADMIN PAYMENT AMOUNT
+    # =====================
+    if current_state in ("admin_payment_amount", "admin_payment_confirm"):
+        if uid != ADMIN_ID:
+            return
+
+        if current_state == "admin_payment_confirm":
+            await update.message.reply_text(
+                "برای ادامه از دکمه‌های پیام تأیید استفاده کنید؛ یا مبلغ را اصلاح کنید."
+            )
+            return
+
+        code = state.get("code")
+        request = get_request(code)
+        if not request:
+            USER_STATES.pop(uid, None)
+            await update.message.reply_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        # Persian and Arabic digits -> ASCII; ignore separators and whitespace.
+        digit_map = str.maketrans(
+            "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩",
+            "01234567890123456789",
+        )
+        normalized = text.translate(digit_map)
+        normalized = normalized.replace(",", "").replace("٬", "").replace(" ", "").replace("_", "")
+        if not normalized.isdigit() or int(normalized) <= 0:
+            await update.message.reply_text(
+                "❌ مبلغ معتبر نیست. لطفاً فقط یک عدد مثبت به ریال ارسال کنید.\n"
+                "مثال: ۶۰۰۰۰۰"
+            )
+            return
+
+        amount = int(normalized)
+        USER_STATES[uid] = {
+            "state": "admin_payment_confirm",
+            "code": code,
+            "amount": amount,
+        }
+        await update.message.reply_text(
+            "🔎 بررسی نهایی اطلاعات پرداخت\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            f"👤 مشتری: {request['full_name']}\n"
+            f"🆔 شناسه کاربر: {request['user_id']}\n"
+            f"💰 مبلغ: {amount:,} ریال\n"
+            f"💳 شماره کارت: {PAYMENT_CARD_DISPLAY}\n"
+            f"👤 صاحب کارت: {PAYMENT_CARD_HOLDER}\n\n"
+            "آیا اطلاعات صحیح است؟",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ تأیید و ارسال", callback_data=f"payment_send_confirm|{code}"),
+                ],
+                [
+                    InlineKeyboardButton("✏️ اصلاح مبلغ", callback_data=f"payment_edit|{code}"),
+                    InlineKeyboardButton("❌ لغو", callback_data=f"payment_cancel|{code}"),
+                ],
+            ]),
+        )
+        return
 
     # =====================
     # SUPPORT
