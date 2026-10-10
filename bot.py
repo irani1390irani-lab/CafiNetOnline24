@@ -111,6 +111,7 @@ def init_db():
             full_name TEXT,
             phone TEXT,
             telegram_id TEXT,
+            doctor_name TEXT DEFAULT '',
             description TEXT,
             category TEXT,
             service TEXT,
@@ -126,6 +127,12 @@ def init_db():
         cur.execute(
             "ALTER TABLE requests ADD COLUMN admin_reason TEXT DEFAULT ''"
         )
+    except sqlite3.OperationalError:
+        pass
+
+    # Add doctor_name to existing databases without affecting saved requests.
+    try:
+        cur.execute("ALTER TABLE requests ADD COLUMN doctor_name TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
 
@@ -204,6 +211,7 @@ STATE_NAME = "name"
 STATE_PHONE = "phone"
 STATE_TELEGRAM = "telegram"
 STATE_DESCRIPTION = "description"
+STATE_DOCTOR = "medical_doctor"
 STATE_TRACKING = "tracking"
 
 STATE_ADMIN_SEARCH = "admin_search"
@@ -286,6 +294,7 @@ def create_request(
     description,
     category,
     service,
+    doctor_name="",
 ):
     conn = get_db()
     cur = conn.cursor()
@@ -299,6 +308,7 @@ def create_request(
             full_name,
             phone,
             telegram_id,
+            doctor_name,
             description,
             category,
             service,
@@ -306,7 +316,7 @@ def create_request(
             created_at,
             updated_at
         )
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             "TEMP",
@@ -315,6 +325,7 @@ def create_request(
             full_name,
             phone,
             telegram_id,
+            doctor_name,
             description,
             category,
             service,
@@ -552,6 +563,12 @@ def main_keyboard(user_id=None):
         ],
         [
             InlineKeyboardButton(
+                "🏥 نوبت‌دهی مراکز درمانی",
+                callback_data="service|medical",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🧩 سایر خدمات",
                 callback_data="other_services",
             )
@@ -684,8 +701,8 @@ def registrations_keyboard():
 
 
 def status_keyboard(code):
-    return InlineKeyboardMarkup(
-        [
+    request = get_request(code)
+    rows = [
             [
                 InlineKeyboardButton(
                     "🟢 پذیرفتن درخواست",
@@ -733,7 +750,12 @@ def status_keyboard(code):
                 )
             ],
         ]
-    )
+    if request and request["user_id"]:
+        rows.insert(-1, [InlineKeyboardButton(
+            "🔗 باز کردن چت مشتری",
+            url=f"tg://openmessage?user_id={request['user_id']}",
+        )])
+    return InlineKeyboardMarkup(rows)
 
 
 # =========================
@@ -802,6 +824,14 @@ SERVICE_CATEGORIES = {
         "🏡 وام مسکن",
         "💼 وام اشتغال",
         "💰 سایر تسهیلات حمایتی",
+    ]),
+    "medical": ("🏥 نوبت‌دهی مراکز درمانی", [
+        "🏥 نوبت بیمارستان",
+        "🩺 نوبت مطب پزشک",
+        "🏥 نوبت درمانگاه",
+        "🧪 نوبت آزمایشگاه",
+        "🩻 نوبت تصویربرداری",
+        "🏥 نوبت سایر مراکز درمانی",
     ]),
 }
 
@@ -903,7 +933,10 @@ def format_request_details(request):
         f"🔧 خدمت: {request['service']}\n"
         f"👤 نام: {request['full_name']}\n"
         f"📱 شماره: {request['phone']}\n"
-        f"🆔 تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
+        f"🆔 آیدی عددی تلگرام: {request['user_id']}\n"
+        f"🔗 ارتباط با مشتری: tg://openmessage?user_id={request['user_id']}\n"
+        f"👨‍⚕️ نام پزشک: {request['doctor_name'] or 'ثبت نشده / لازم نیست'}\n"
+        f"🏷️ یوزرنیم تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
         f"📝 توضیحات: {request['description'] or 'بدون توضیح'}\n\n"
         f"📌 وضعیت: {request['status']}\n"
         f"🕐 زمان ثبت: {request['created_at']}\n"
@@ -1028,7 +1061,8 @@ async def create_other_request(update, context):
             f"🔧 خدمت: {request['service']}\n"
             f"👤 نام: {request['full_name']}\n"
             f"📱 شماره: {request['phone']}\n"
-            f"🆔 تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
+            f"🆔 آیدی عددی تلگرام: {request['user_id']}\n"
+            f"🔗 چت مشتری: tg://openmessage?user_id={request['user_id']}\n"
             f"📝 توضیحات:\n{request['description'] or 'بدون توضیح'}\n\n"
             "برای مدیریت درخواست از پنل مدیریت استفاده کنید.",
         )
@@ -2556,12 +2590,59 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_other_summary(update, state)
             return
 
+        # Medical appointment requests collect the doctor's name. For clinics and
+        # private practices it is mandatory; for other centers it can be skipped.
+        if state.get("category") == "🏥 نوبت‌دهی مراکز درمانی":
+            service = state.get("service", "")
+            mandatory_doctor = ("مطب" in service or "درمانگاه" in service)
+            state["state"] = STATE_DOCTOR
+            state["doctor_required"] = mandatory_doctor
+            USER_STATES[uid] = state
+            if mandatory_doctor:
+                await update.message.reply_text(
+                    "👨‍⚕️ نام پزشک موردنظر را وارد کنید.\n\n"
+                    "برای مطب و درمانگاه، ثبت نام پزشک الزامی است.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+            else:
+                await update.message.reply_text(
+                    "👨‍⚕️ اگر پزشک مشخصی مدنظر دارید، نام او را ارسال کنید.\n\n"
+                    "در غیر این صورت دکمه «پزشک خاصی مدنظر ندارم» را بزنید.",
+                    reply_markup=ReplyKeyboardMarkup(
+                        [[KeyboardButton("پزشک خاصی مدنظر ندارم")]],
+                        resize_keyboard=True, one_time_keyboard=True,
+                    ),
+                )
+            return
+
         state["state"] = STATE_DESCRIPTION
         USER_STATES[uid] = state
 
         await update.message.reply_text(
             "📝 توضیحات درخواست را ارسال کنید.\n\n"
             "اگر توضیح خاصی ندارید، بنویسید: ندارم",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    # =====================
+    # MEDICAL DOCTOR NAME
+    # =====================
+    if current_state == STATE_DOCTOR:
+        skip_doctor = text == "پزشک خاصی مدنظر ندارم"
+        if skip_doctor and state.get("doctor_required"):
+            await update.message.reply_text(
+                "❌ برای مطب و درمانگاه وارد کردن نام پزشک الزامی است. لطفاً نام پزشک را بنویسید."
+            )
+            return
+        if not text or (state.get("doctor_required") and skip_doctor):
+            await update.message.reply_text("❌ لطفاً نام پزشک را وارد کنید.")
+            return
+        state["doctor_name"] = "" if skip_doctor else text
+        state["state"] = STATE_DESCRIPTION
+        USER_STATES[uid] = state
+        await update.message.reply_text(
+            "📝 توضیحات درخواست را ارسال کنید.\n\nاگر توضیح خاصی ندارید، بنویسید: ندارم",
             reply_markup=ReplyKeyboardRemove(),
         )
         return
@@ -2581,6 +2662,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             description=description,
             category=state.get("category", ""),
             service=state.get("service", ""),
+            doctor_name=state.get("doctor_name", ""),
         )
 
         USER_STATES.pop(uid, None)
@@ -2606,7 +2688,10 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🔧 خدمت: {request['service']}\n"
                 f"👤 نام: {request['full_name']}\n"
                 f"📱 شماره: {request['phone']}\n"
-                f"🆔 تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
+                f"🆔 آیدی عددی تلگرام: {request['user_id']}\n"
+                f"🔗 چت مشتری: tg://openmessage?user_id={request['user_id']}\n"
+                f"👨‍⚕️ نام پزشک: {request['doctor_name'] or 'ثبت نشده / لازم نیست'}\n"
+                f"🏷️ یوزرنیم تلگرام: {request['telegram_id'] or 'ثبت نشده'}\n"
                 f"📝 توضیحات:\n{request['description'] or 'بدون توضیح'}\n\n"
                 "برای مدیریت درخواست از پنل مدیریت استفاده کنید.",
             )
