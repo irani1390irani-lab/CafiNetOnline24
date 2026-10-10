@@ -722,6 +722,12 @@ def status_keyboard(code):
             ],
             [
                 InlineKeyboardButton(
+                    "💬 پیام به مشتری",
+                    callback_data=f"admin_message|{code}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "🔙 پنل مدیریت",
                     callback_data="admin_panel",
                 )
@@ -1527,6 +1533,55 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # ADMIN SEND DIRECT MESSAGE TO REQUEST OWNER
+    if data.startswith("admin_message|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+
+        code = data.split("|", 1)[1]
+        request = get_request(code)
+        if not request:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        USER_STATES[user_id] = {
+            "state": "admin_send_message",
+            "code": code,
+        }
+        await query.edit_message_text(
+            "💬 ارسال پیام به مشتری\n\n"
+            f"🎫 کد پیگیری: {code}\n"
+            f"👤 مشتری: {request['full_name']}\n\n"
+            "متن پیام خود را ارسال کنید. پیام مستقیماً از طرف ربات برای مشتری فرستاده می‌شود.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("❌ لغو", callback_data=f"admin_message_cancel|{code}")
+            ]]),
+        )
+        return
+
+    if data.startswith("admin_message_cancel|"):
+        if user_id != ADMIN_ID:
+            await query.answer("⛔ دسترسی ندارید.", show_alert=True)
+            return
+        code = data.split("|", 1)[1]
+        USER_STATES.pop(user_id, None)
+        request = get_request(code)
+        if request:
+            await query.edit_message_text(
+                format_request_details(request),
+                reply_markup=status_keyboard(code),
+            )
+        else:
+            await query.edit_message_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+        return
+
     # ADMIN SEND PAYMENT CARD: ask for amount
     if data.startswith("send_card|"):
         if user_id != ADMIN_ID:
@@ -2065,6 +2120,55 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     current_state = state.get("state")
+
+    # =====================
+    # ADMIN SEND MESSAGE TO CUSTOMER
+    # =====================
+    if current_state == "admin_send_message":
+        if uid != ADMIN_ID:
+            return
+
+        code = state.get("code")
+        request = get_request(code)
+        if not request:
+            USER_STATES.pop(uid, None)
+            await update.message.reply_text(
+                "❌ درخواست پیدا نشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        if not text:
+            await update.message.reply_text("❌ متن پیام نمی‌تواند خالی باشد.")
+            return
+
+        try:
+            await context.bot.send_message(
+                chat_id=request["user_id"],
+                text=(
+                    "💬 پیام پشتیبانی | کافی‌نت آنلاین 24\n\n"
+                    f"{text}\n\n"
+                    f"🎫 کد پیگیری: {code}"
+                ),
+            )
+        except Exception:
+            logger.exception("Could not send admin message to user for %s", code)
+            USER_STATES.pop(uid, None)
+            await update.message.reply_text(
+                "❌ ارسال پیام ناموفق بود. ممکن است کاربر ربات را شروع نکرده یا دریافت پیام از ربات را مسدود کرده باشد.",
+                reply_markup=admin_keyboard(),
+            )
+            return
+
+        USER_STATES.pop(uid, None)
+        await update.message.reply_text(
+            "✅ پیام با موفقیت برای مشتری ارسال شد.\n\n"
+            f"🎫 کد پیگیری: {code}",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 بازگشت به درخواست", callback_data=f"admin_view|{code}")
+            ]]),
+        )
+        return
 
     # =====================
     # ADMIN PAYMENT AMOUNT
