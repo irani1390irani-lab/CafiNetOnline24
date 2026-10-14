@@ -563,6 +563,12 @@ def main_keyboard(user_id=None):
         ],
         [
             InlineKeyboardButton(
+                "🇮🇷 خدمات کالابرگ و یارانه",
+                callback_data="service|welfare",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🏥 نوبت‌دهی مراکز درمانی",
                 callback_data="service|medical",
             )
@@ -832,6 +838,13 @@ SERVICE_CATEGORIES = {
         "🧪 نوبت آزمایشگاه",
         "🩻 نوبت تصویربرداری",
         "🏥 نوبت سایر مراکز درمانی",
+    ]),
+    "welfare": ("🇮🇷 خدمات کالابرگ و یارانه", [
+        "📊 بررسی دهک‌بندی",
+        "🛒 اعتراض به کالابرگ",
+        "💳 ویرایش شماره شبا",
+        "👨‍👩‍👧 جداسازی یارانه",
+        "🧩 سایر خدمات کالابرگ و یارانه",
     ]),
 }
 
