@@ -1,828 +1,217 @@
-
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#063f32">
+  <meta name="theme-color" content="#f45a0a">
   <meta name="description" content="کافی‌نت آنلاین 24؛ ثبت و پیگیری درخواست خدمات اینترنتی از طریق ربات رسمی.">
   <title>کافی‌نت آنلاین 24 | خدمات آنلاین</title>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
   <style>
     :root {
-      --green: #00a878;
-      --mint: #00d9a0;
-      --dark: #063f32;
-      --ink: #102d25;
-      --muted: #71847c;
-      --glass: rgba(255,255,255,.76);
-      --line: rgba(255,255,255,.85);
-      --shadow: 0 18px 55px rgba(6,63,50,.09);
+      --green: #f45a0a;
+      --mint: #ff9a45;
+      --dark: #8f2e08;
+      --ink: #352116;
+      --muted: #89766b;
+      --glass: rgba(255,255,255,.78);
+      --line: rgba(255,255,255,.9);
+      --shadow: 0 18px 55px rgba(143,46,8,.09);
     }
-
     * { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
-
     body {
-      margin: 0;
-      font-family: "Vazirmatn", sans-serif;
-      color: var(--ink);
+      margin: 0; font-family: "Vazirmatn", sans-serif; color: var(--ink);
       background:
-        radial-gradient(ellipse at 10% 10%, rgba(0,217,160,.17), transparent 35%),
-        radial-gradient(ellipse at 90% 35%, rgba(0,168,120,.12), transparent 32%),
-        linear-gradient(145deg, #f4fff9, #e7f8ef 48%, #f7fffb);
-      min-height: 100vh;
-      overflow-x: hidden;
+        radial-gradient(ellipse at 10% 10%, rgba(255,154,69,.19), transparent 35%),
+        radial-gradient(ellipse at 90% 35%, rgba(244,90,10,.11), transparent 32%),
+        linear-gradient(145deg, #fffaf6, #fff0e4 48%, #fffdfa);
+      min-height: 100vh; overflow-x: hidden;
     }
-
     body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      opacity: .23;
-      background-image: radial-gradient(#63b89a 0.7px, transparent .7px);
-      background-size: 23px 23px;
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .23;
+      background-image: radial-gradient(#e8a77f .7px, transparent .7px); background-size: 23px 23px;
       mask-image: linear-gradient(to bottom, black, transparent 85%);
     }
-
     a { color: inherit; text-decoration: none; }
-
     button, a { -webkit-tap-highlight-color: transparent; }
-
-    .container {
-      width: min(1120px, calc(100% - 36px));
-      margin-inline: auto;
-    }
-
-    .header {
-      position: sticky;
-      top: 10px;
-      z-index: 20;
-      margin-top: 10px;
-    }
-
+    .container { width: min(1120px, calc(100% - 36px)); margin-inline: auto; }
+    .header { position: sticky; top: 10px; z-index: 20; margin-top: 10px; }
     .nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      padding: 12px 17px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.72);
-      backdrop-filter: blur(22px);
-      -webkit-backdrop-filter: blur(22px);
-      border-radius: 22px;
-      box-shadow: 0 8px 30px rgba(6,63,50,.06);
+      display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 17px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.76); backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px); border-radius: 22px; box-shadow: 0 8px 30px rgba(143,46,8,.06);
     }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      min-width: max-content;
-    }
-
+    .brand { display: flex; align-items: center; gap: 11px; min-width: max-content; }
     .brand-icon {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      color: white;
-      font-size: 23px;
-      font-weight: 900;
-      background: linear-gradient(145deg, var(--mint), var(--green) 70%, var(--dark));
-      box-shadow: 0 8px 20px rgba(0,168,120,.23);
+      width: 46px; height: 46px; display: grid; place-items: center; border-radius: 16px; color: white;
+      font-size: 23px; font-weight: 900; background: linear-gradient(145deg, var(--mint), var(--green) 70%, var(--dark));
+      box-shadow: 0 8px 20px rgba(244,90,10,.23);
     }
-
     .brand-name { font-weight: 900; font-size: 15px; }
     .brand-caption { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 23px;
-      font-size: 12px;
-      color: #526c61;
-    }
-
+    .nav-links { display: flex; align-items: center; gap: 23px; font-size: 12px; color: #80685a; }
     .nav-links a:hover { color: var(--green); }
-
     .button {
-      border: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      padding: 13px 20px;
-      border-radius: 15px;
-      background: linear-gradient(120deg, var(--green), #087b5e);
-      color: white;
-      font-family: inherit;
-      font-weight: 800;
-      font-size: 13px;
-      cursor: pointer;
-      box-shadow: 0 10px 24px rgba(0,168,120,.19);
-      transition: transform .2s, box-shadow .2s;
+      border: 0; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 13px 20px;
+      border-radius: 15px; background: linear-gradient(120deg, var(--green), #c94708); color: white;
+      font-family: inherit; font-weight: 800; font-size: 13px; cursor: pointer;
+      box-shadow: 0 10px 24px rgba(244,90,10,.19); transition: transform .2s, box-shadow .2s;
     }
-
-    .button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 28px rgba(0,168,120,.25);
-    }
-
-    .button-light {
-      background: rgba(255,255,255,.8);
-      color: var(--dark);
-      border: 1px solid #d8eee4;
-      box-shadow: none;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1.04fr .96fr;
-      align-items: center;
-      gap: 45px;
-      padding-top: 75px;
-      padding-bottom: 62px;
-    }
-
+    .button:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(244,90,10,.25); }
+    .button-light { background: rgba(255,255,255,.86); color: var(--dark); border: 1px solid #f4dfd1; box-shadow: none; }
+    .hero { display: grid; grid-template-columns: 1.04fr .96fr; align-items: center; gap: 45px; padding-top: 75px; padding-bottom: 62px; }
     .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 13px;
-      background: rgba(255,255,255,.72);
-      border: 1px solid white;
-      border-radius: 99px;
-      color: #087b5e;
-      font-size: 11px;
-      font-weight: 800;
-      box-shadow: 0 6px 20px rgba(6,63,50,.04);
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; background: rgba(255,255,255,.78);
+      border: 1px solid white; border-radius: 99px; color: #bd480b; font-size: 11px; font-weight: 800;
+      box-shadow: 0 6px 20px rgba(143,46,8,.04);
     }
-
-    .pulse {
-      width: 8px;
-      height: 8px;
-      background: #00b980;
-      border-radius: 50%;
-      box-shadow: 0 0 0 5px rgba(0,185,128,.12);
-    }
-
-    h1 {
-      margin: 23px 0 16px;
-      font-size: clamp(35px, 4.6vw, 58px);
-      line-height: 1.55;
-      letter-spacing: -1.7px;
-      font-weight: 900;
-    }
-
-    h1 span {
-      color: var(--green);
-      display: inline-block;
-      position: relative;
-    }
-
-    .hero-description {
-      max-width: 510px;
-      color: #657a70;
-      line-height: 2.2;
-      font-size: 14px;
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 26px;
-    }
-
-    .hero-note {
-      margin-top: 18px;
-      color: #7d9288;
-      font-size: 11px;
-      line-height: 2;
-    }
-
-    .hero-art {
-      position: relative;
-      min-height: 420px;
-      display: grid;
-      place-items: center;
-    }
-
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(1px);
-      pointer-events: none;
-    }
-
-    .orb-one {
-      width: 270px;
-      height: 270px;
-      background: linear-gradient(135deg, rgba(0,217,160,.45), rgba(0,168,120,.04));
-      top: 48px;
-      right: 38px;
-    }
-
-    .orb-two {
-      width: 125px;
-      height: 125px;
-      background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(0,217,160,.24));
-      bottom: 35px;
-      left: 25px;
-    }
-
+    .pulse { width: 8px; height: 8px; background: #f45a0a; border-radius: 50%; box-shadow: 0 0 0 5px rgba(244,90,10,.12); }
+    h1 { margin: 23px 0 16px; font-size: clamp(35px, 4.6vw, 58px); line-height: 1.55; letter-spacing: -1.7px; font-weight: 900; }
+    h1 span { color: var(--green); display: inline-block; position: relative; }
+    .hero-description { max-width: 510px; color: #806d61; line-height: 2.2; font-size: 14px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+    .hero-note { margin-top: 18px; color: #9a8578; font-size: 11px; line-height: 2; }
+    .hero-art { position: relative; min-height: 420px; display: grid; place-items: center; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(1px); pointer-events: none; }
+    .orb-one { width: 270px; height: 270px; background: linear-gradient(135deg, rgba(255,154,69,.48), rgba(244,90,10,.04)); top: 48px; right: 38px; }
+    .orb-two { width: 125px; height: 125px; background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(255,154,69,.28)); bottom: 35px; left: 25px; }
     .dashboard {
-      position: relative;
-      width: min(100%, 390px);
-      padding: 23px;
-      background: linear-gradient(145deg, rgba(7,73,57,.98), rgba(3,44,36,.99));
-      border: 1px solid rgba(255,255,255,.22);
-      border-radius: 30px;
-      color: white;
-      box-shadow: 0 32px 75px rgba(6,63,50,.23);
-      transform: rotate(-2deg);
-      overflow: hidden;
-      animation: float 6s ease-in-out infinite;
+      position: relative; width: min(100%, 390px); padding: 23px;
+      background: linear-gradient(145deg, rgba(174,59,7,.98), rgba(103,34,7,.99));
+      border: 1px solid rgba(255,255,255,.24); border-radius: 30px; color: white;
+      box-shadow: 0 32px 75px rgba(143,46,8,.23); transform: rotate(-2deg); overflow: hidden; animation: float 6s ease-in-out infinite;
     }
-
-    .dashboard::before {
-      content: "";
-      position: absolute;
-      width: 230px;
-      height: 230px;
-      border-radius: 50%;
-      background: rgba(0,217,160,.12);
-      filter: blur(35px);
-      left: -70px;
-      top: -90px;
-    }
-
-    .dashboard-top, .dashboard-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      position: relative;
-    }
-
-    .dashboard-label { color: #a6c8ba; font-size: 11px; }
+    .dashboard::before { content: ""; position: absolute; width: 230px; height: 230px; border-radius: 50%; background: rgba(255,154,69,.15); filter: blur(35px); left: -70px; top: -90px; }
+    .dashboard-top, .dashboard-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: relative; }
+    .dashboard-label { color: #f3c4a6; font-size: 11px; }
     .dashboard-title { font-size: 19px; font-weight: 900; margin-top: 6px; }
-
-    .mini-logo {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(145deg, #00d9a0, #008963);
-      border-radius: 16px;
-      font-size: 22px;
-    }
-
-    .dashboard-divider {
-      height: 1px;
-      background: rgba(255,255,255,.13);
-      margin: 22px 0;
-    }
-
-    .service-preview {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      padding: 13px;
-      margin-top: 10px;
-      border-radius: 17px;
-      background: rgba(255,255,255,.075);
-      border: 1px solid rgba(255,255,255,.07);
-    }
-
-    .preview-icon {
-      width: 43px;
-      height: 43px;
-      display: grid;
-      place-items: center;
-      background: rgba(0,217,160,.13);
-      border-radius: 14px;
-      font-size: 21px;
-    }
-
+    .mini-logo { width: 46px; height: 46px; display: grid; place-items: center; background: linear-gradient(145deg, #ffb16c, #f45a0a); border-radius: 16px; font-size: 22px; }
+    .dashboard-divider { height: 1px; background: rgba(255,255,255,.15); margin: 22px 0; }
+    .service-preview { display: flex; align-items: center; gap: 13px; padding: 13px; margin-top: 10px; border-radius: 17px; background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.07); }
+    .preview-icon { width: 43px; height: 43px; display: grid; place-items: center; background: rgba(255,154,69,.16); border-radius: 14px; font-size: 21px; }
     .preview-title { font-size: 12px; font-weight: 800; }
-    .preview-caption { color: #a6c8ba; font-size: 10px; margin-top: 4px; }
-    .preview-arrow { margin-right: auto; color: #8af1ce; font-size: 20px; }
-
-    .dashboard-bottom {
-      margin-top: 20px;
-      padding: 12px 14px;
-      border-radius: 15px;
-      background: rgba(0,217,160,.12);
-      color: #c4ffe9;
-      font-size: 11px;
-    }
-
+    .preview-caption { color: #f3c4a6; font-size: 10px; margin-top: 4px; }
+    .preview-arrow { margin-right: auto; color: #ffc28e; font-size: 20px; }
+    .dashboard-bottom { margin-top: 20px; padding: 12px 14px; border-radius: 15px; background: rgba(255,154,69,.15); color: #ffe2cb; font-size: 11px; }
     .section { padding: 48px 0; }
-
-    .section-heading {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 18px;
-      margin-bottom: 25px;
-    }
-
-    .section-kicker {
-      color: var(--green);
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: .3px;
-    }
-
-    h2 {
-      margin: 8px 0 0;
-      font-size: clamp(24px, 3vw, 33px);
-      font-weight: 900;
-      letter-spacing: -.6px;
-    }
-
-    .section-description {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 2;
-      max-width: 400px;
-      margin: 10px 0 0;
-    }
-
-    .services-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    .service-card {
-      position: relative;
-      padding: 23px;
-      border-radius: 23px;
-      background: var(--glass);
-      border: 1px solid white;
-      box-shadow: var(--shadow);
-      transition: transform .25s, border-color .25s;
-      overflow: hidden;
-    }
-
-    .service-card:hover {
-      transform: translateY(-5px);
-      border-color: #9debd0;
-    }
-
-    .service-card::after {
-      content: "";
-      position: absolute;
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      left: -40px;
-      bottom: -55px;
-      background: rgba(0,217,160,.08);
-    }
-
-    .service-icon {
-      width: 52px;
-      height: 52px;
-      display: grid;
-      place-items: center;
-      border-radius: 17px;
-      font-size: 24px;
-      background: linear-gradient(145deg, #d8fff0, #f0fff8);
-      border: 1px solid #c8f5e4;
-    }
-
-    .service-card h3 {
-      margin: 18px 0 8px;
-      font-size: 15px;
-      font-weight: 900;
-    }
-
-    .service-card p {
-      margin: 0;
-      min-height: 48px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 2;
-    }
-
-    .service-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 17px;
-      color: #07845f;
-      font-size: 12px;
-      font-weight: 900;
-    }
-
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 25px; }
+    .section-kicker { color: var(--green); font-size: 11px; font-weight: 900; letter-spacing: .3px; }
+    h2 { margin: 8px 0 0; font-size: clamp(24px, 3vw, 33px); font-weight: 900; letter-spacing: -.6px; }
+    .section-description { color: var(--muted); font-size: 12px; line-height: 2; max-width: 400px; margin: 10px 0 0; }
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .service-card { position: relative; padding: 23px; border-radius: 23px; background: var(--glass); border: 1px solid white; box-shadow: var(--shadow); transition: transform .25s, border-color .25s; overflow: hidden; }
+    .service-card:hover { transform: translateY(-5px); border-color: #f7c09f; }
+    .service-card::after { content: ""; position: absolute; width: 100px; height: 100px; border-radius: 50%; left: -40px; bottom: -55px; background: rgba(255,154,69,.11); }
+    .service-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 17px; font-size: 24px; background: linear-gradient(145deg, #ffe4d1, #fff5ed); border: 1px solid #f8d6c0; }
+    .service-card h3 { margin: 18px 0 8px; font-size: 15px; font-weight: 900; }
+    .service-card p { margin: 0; min-height: 48px; color: var(--muted); font-size: 11px; line-height: 2; }
+    .service-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 17px; color: #c74a0b; font-size: 12px; font-weight: 900; }
     .service-link span { transition: transform .2s; }
     .service-link:hover span { transform: translateX(-4px); }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    .step {
-      padding: 22px;
-      border-radius: 21px;
-      border: 1px solid rgba(255,255,255,.95);
-      background: rgba(255,255,255,.5);
-    }
-
-    .step-number {
-      display: inline-grid;
-      place-items: center;
-      width: 37px;
-      height: 37px;
-      background: var(--dark);
-      color: white;
-      border-radius: 13px;
-      font-size: 13px;
-      font-weight: 900;
-    }
-
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .step { padding: 22px; border-radius: 21px; border: 1px solid rgba(255,255,255,.98); background: rgba(255,255,255,.62); }
+    .step-number { display: inline-grid; place-items: center; width: 37px; height: 37px; background: var(--dark); color: white; border-radius: 13px; font-size: 13px; font-weight: 900; }
     .step h3 { font-size: 14px; margin: 15px 0 8px; }
     .step p { font-size: 11px; line-height: 2.1; color: var(--muted); margin: 0; }
-
-    .cta {
-      position: relative;
-      margin: 40px 0 65px;
-      padding: 38px;
-      border-radius: 29px;
-      overflow: hidden;
-      color: white;
-      background: linear-gradient(115deg, #063f32, #087a59 70%, #00a878);
-      box-shadow: 0 25px 55px rgba(6,63,50,.17);
-    }
-
-    .cta::after {
-      content: "";
-      position: absolute;
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.12);
-      left: -70px;
-      top: -120px;
-      box-shadow: 0 0 0 28px rgba(255,255,255,.035), 0 0 0 60px rgba(255,255,255,.025);
-    }
-
+    .cta { position: relative; margin: 40px 0 65px; padding: 38px; border-radius: 29px; overflow: hidden; color: white; background: linear-gradient(115deg, #8f2e08, #c94708 70%, #f45a0a); box-shadow: 0 25px 55px rgba(143,46,8,.17); }
+    .cta::after { content: ""; position: absolute; width: 260px; height: 260px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); left: -70px; top: -120px; box-shadow: 0 0 0 28px rgba(255,255,255,.035), 0 0 0 60px rgba(255,255,255,.025); }
     .cta-content { position: relative; z-index: 1; max-width: 680px; }
     .cta h2 { font-size: clamp(23px, 3vw, 31px); }
-    .cta p { color: #c3e4d7; font-size: 12px; line-height: 2.2; margin: 13px 0 22px; }
+    .cta p { color: #ffe0ca; font-size: 12px; line-height: 2.2; margin: 13px 0 22px; }
     .cta .button { background: white; color: var(--dark); box-shadow: none; }
-
-    .footer {
-      padding: 26px 0 32px;
-      border-top: 1px solid rgba(6,63,50,.1);
-    }
-
-    .footer-inner {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 18px;
-    }
-
+    .footer { padding: 26px 0 32px; border-top: 1px solid rgba(143,46,8,.1); }
+    .footer-inner { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
     .footer-copy { color: var(--muted); font-size: 10px; line-height: 2; }
-    .footer-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #4f7061; }
+    .footer-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #80685a; }
     .footer-links a:hover { color: var(--green); }
-
-    .floating-button {
-      position: fixed;
-      z-index: 30;
-      left: 20px;
-      bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 13px 17px;
-      color: white;
-      background: linear-gradient(120deg, #00a878, #067553);
-      border-radius: 18px;
-      box-shadow: 0 12px 35px rgba(0,100,70,.28);
-      font-size: 12px;
-      font-weight: 900;
-      transition: transform .2s;
-    }
-
+    .floating-button { position: fixed; z-index: 30; left: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px; padding: 13px 17px; color: white; background: linear-gradient(120deg, #f45a0a, #c94708); border-radius: 18px; box-shadow: 0 12px 35px rgba(200,70,8,.28); font-size: 12px; font-weight: 900; transition: transform .2s; }
     .floating-button:hover { transform: translateY(-3px); }
     .floating-icon { font-size: 20px; }
-
-    .fade-in {
-      animation: appear .7s ease both;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0) rotate(-2deg); }
-      50% { transform: translateY(-10px) rotate(-1deg); }
-    }
-
-    @keyframes appear {
-      from { opacity: 0; transform: translateY(15px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 850px) {
-      .nav-links { gap: 12px; }
-      .nav-links a { font-size: 11px; }
-      .hero { gap: 20px; padding-top: 50px; }
-      .hero-art { min-height: 360px; }
-      .dashboard { padding: 18px; }
-      .services-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
+    .fade-in { animation: appear .7s ease both; }
+    @keyframes float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(-1deg); } }
+    @keyframes appear { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 850px) { .nav-links { gap: 12px; } .nav-links a { font-size: 11px; } .hero { gap: 20px; padding-top: 50px; } .hero-art { min-height: 360px; } .dashboard { padding: 18px; } .services-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 620px) {
-      .container { width: min(100% - 26px, 500px); }
-      .nav { padding: 10px 12px; border-radius: 18px; }
-      .brand-icon { width: 41px; height: 41px; border-radius: 14px; }
-      .brand-name { font-size: 13px; }
-      .brand-caption { font-size: 9px; }
-      .nav-links { display: none; }
-      .nav > .button { padding: 11px 13px; font-size: 11px; }
-      .hero { grid-template-columns: 1fr; padding-top: 43px; gap: 15px; }
-      h1 { font-size: 38px; line-height: 1.55; letter-spacing: -1px; }
-      .hero-description { font-size: 12px; }
-      .hero-art { min-height: 370px; }
-      .dashboard { width: min(100%, 360px); }
-      .orb-one { right: 5px; }
-      .section { padding: 32px 0; }
-      .section-heading { align-items: start; flex-direction: column; }
-      .services-grid { gap: 11px; }
-      .service-card { padding: 16px; border-radius: 19px; }
-      .service-icon { width: 45px; height: 45px; font-size: 21px; }
-      .service-card h3 { font-size: 13px; margin-top: 13px; }
-      .service-card p { font-size: 10px; }
-      .service-link { font-size: 11px; }
-      .steps { grid-template-columns: 1fr; }
-      .step { padding: 18px; }
-      .cta { padding: 27px 21px; margin: 25px 0 45px; }
-      .footer-inner { flex-direction: column; align-items: start; }
-      .floating-button { left: 12px; bottom: 12px; padding: 12px 14px; border-radius: 15px; }
+      .container { width: min(100% - 26px, 500px); } .nav { padding: 10px 12px; border-radius: 18px; }
+      .brand-icon { width: 41px; height: 41px; border-radius: 14px; } .brand-name { font-size: 13px; } .brand-caption { font-size: 9px; }
+      .nav-links { display: none; } .nav > .button { padding: 11px 13px; font-size: 11px; }
+      .hero { grid-template-columns: 1fr; padding-top: 43px; gap: 15px; } h1 { font-size: 38px; line-height: 1.55; letter-spacing: -1px; }
+      .hero-description { font-size: 12px; } .hero-art { min-height: 370px; } .dashboard { width: min(100%, 360px); }
+      .orb-one { right: 5px; } .section { padding: 32px 0; } .section-heading { align-items: start; flex-direction: column; }
+      .services-grid { gap: 11px; } .service-card { padding: 16px; border-radius: 19px; }
+      .service-icon { width: 45px; height: 45px; font-size: 21px; } .service-card h3 { font-size: 13px; margin-top: 13px; }
+      .service-card p { font-size: 10px; } .service-link { font-size: 11px; } .steps { grid-template-columns: 1fr; }
+      .step { padding: 18px; } .cta { padding: 27px 21px; margin: 25px 0 45px; }
+      .footer-inner { flex-direction: column; align-items: start; } .floating-button { left: 12px; bottom: 12px; padding: 12px 14px; border-radius: 15px; }
     }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important;
-        animation-duration: .01ms !important;
-        transition-duration: .01ms !important;
-      }
-    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
   </style>
 </head>
-
 <body>
   <header class="header container">
     <nav class="nav" aria-label="منوی اصلی">
       <a class="brand" href="#home" aria-label="صفحه اصلی کافی‌نت آنلاین 24">
         <div class="brand-icon">۲۴</div>
-        <div>
-          <div class="brand-name">کافی‌نت آنلاین 24</div>
-          <div class="brand-caption">خدمات اینترنتی، آسان و سریع</div>
-        </div>
+        <div><div class="brand-name">کافی‌نت آنلاین 24</div><div class="brand-caption">خدمات اینترنتی، آسان و سریع</div></div>
       </a>
-
       <div class="nav-links">
-        <a href="#home">صفحه اصلی</a>
-        <a href="#services">خدمات</a>
-        <a href="#steps">نحوه ثبت درخواست</a>
-        <a href="#contact">ارتباط با ما</a>
+        <a href="#home">صفحه اصلی</a><a href="#services">خدمات</a><a href="#steps">نحوه ثبت درخواست</a><a href="#contact">ارتباط با ما</a>
       </div>
-
-      <a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">
-        ورود به ربات <span>←</span>
-      </a>
+      <a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ورود به ربات <span>←</span></a>
     </nav>
   </header>
-
   <main>
     <section class="hero container" id="home">
       <div class="fade-in">
         <div class="eyebrow"><span class="pulse"></span> همراه آنلاین خدمات شما</div>
-
-        <h1>
-          خدمات آنلاین،<br>
-          <span>ساده‌تر از همیشه</span>
-        </h1>
-
-        <p class="hero-description">
-          برای ثبت درخواست خدمات اینترنتی لازم نیست مسیر پیچیده‌ای طی کنید.
-          وارد ربات کافی‌نت آنلاین 24 شوید، خدمت موردنظرتان را انتخاب کنید
-          و درخواست خود را ثبت کنید.
-        </p>
-
+        <h1>خدمات آنلاین،<br><span>ساده‌تر از همیشه</span></h1>
+        <p class="hero-description">برای ثبت درخواست خدمات اینترنتی لازم نیست مسیر پیچیده‌ای طی کنید. وارد ربات کافی‌نت آنلاین 24 شوید، خدمت موردنظرتان را انتخاب کنید و درخواست خود را ثبت کنید.</p>
         <div class="hero-actions">
-          <a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">
-            ثبت درخواست جدید <span>←</span>
-          </a>
+          <a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ثبت درخواست جدید <span>←</span></a>
           <a class="button button-light" href="#services">مشاهده خدمات</a>
         </div>
-
-        <div class="hero-note">
-          ثبت درخواست و پیگیری وضعیت آن از طریق ربات رسمی انجام می‌شود.
-        </div>
+        <div class="hero-note">ثبت درخواست و پیگیری وضعیت آن از طریق ربات رسمی انجام می‌شود.</div>
       </div>
-
       <div class="hero-art" aria-label="نمایش گرافیکی خدمات آنلاین">
-        <div class="orb orb-one"></div>
-        <div class="orb orb-two"></div>
-
+        <div class="orb orb-one"></div><div class="orb orb-two"></div>
         <div class="dashboard">
-          <div class="dashboard-top">
-            <div>
-              <div class="dashboard-label">به فضای خدمات آنلاین خوش آمدید</div>
-              <div class="dashboard-title">خدمات شما، یکجا!</div>
-            </div>
-            <div class="mini-logo">✦</div>
-          </div>
-
+          <div class="dashboard-top"><div><div class="dashboard-label">به فضای خدمات آنلاین خوش آمدید</div><div class="dashboard-title">خدمات شما، یکجا!</div></div><div class="mini-logo">✦</div></div>
           <div class="dashboard-divider"></div>
-
-          <div class="service-preview">
-            <div class="preview-icon">🚘</div>
-            <div>
-              <div class="preview-title">خدمات خودرو</div>
-              <div class="preview-caption">ثبت درخواست از طریق ربات</div>
-            </div>
-            <div class="preview-arrow">←</div>
-          </div>
-
-          <div class="service-preview">
-            <div class="preview-icon">📄</div>
-            <div>
-              <div class="preview-title">خدمات اداری و اینترنتی</div>
-              <div class="preview-caption">انتخاب خدمت موردنیاز</div>
-            </div>
-            <div class="preview-arrow">←</div>
-          </div>
-
-          <div class="service-preview">
-            <div class="preview-icon">💬</div>
-            <div>
-              <div class="preview-title">ارتباط با پشتیبانی</div>
-              <div class="preview-caption">پاسخ‌گویی به درخواست‌ها</div>
-            </div>
-            <div class="preview-arrow">←</div>
-          </div>
-
-          <div class="dashboard-bottom">
-            <span>✦ محیطی ساده برای شروع درخواست</span>
-            <span>24</span>
-          </div>
+          <div class="service-preview"><div class="preview-icon">🚘</div><div><div class="preview-title">خدمات خودرو</div><div class="preview-caption">ثبت درخواست از طریق ربات</div></div><div class="preview-arrow">←</div></div>
+          <div class="service-preview"><div class="preview-icon">📄</div><div><div class="preview-title">خدمات اداری و اینترنتی</div><div class="preview-caption">انتخاب خدمت موردنیاز</div></div><div class="preview-arrow">←</div></div>
+          <div class="service-preview"><div class="preview-icon">💬</div><div><div class="preview-title">ارتباط با پشتیبانی</div><div class="preview-caption">پاسخ‌گویی به درخواست‌ها</div></div><div class="preview-arrow">←</div></div>
+          <div class="dashboard-bottom"><span>✦ محیطی ساده برای شروع درخواست</span><span>24</span></div>
         </div>
       </div>
     </section>
-
     <section class="section container" id="services">
-      <div class="section-heading">
-        <div>
-          <div class="section-kicker">خدمات ما</div>
-          <h2>چه خدمتی نیاز دارید؟</h2>
-          <p class="section-description">
-            دسته‌بندی موردنظرتان را انتخاب کنید تا برای ثبت درخواست وارد ربات شوید.
-          </p>
-        </div>
-        <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">
-          مشاهده در ربات <span>←</span>
-        </a>
-      </div>
-
+      <div class="section-heading"><div><div class="section-kicker">خدمات ما</div><h2>چه خدمتی نیاز دارید؟</h2><p class="section-description">دسته‌بندی موردنظرتان را انتخاب کنید تا برای ثبت درخواست وارد ربات شوید.</p></div><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">مشاهده در ربات <span>←</span></a></div>
       <div class="services-grid">
-        <article class="service-card">
-          <div class="service-icon">🚘</div>
-          <h3>خدمات خودرو</h3>
-          <p>درخواست خدمات مرتبط با خودرو، ثبت‌نام‌ها و سایر موارد موجود در ربات.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ثبت درخواست <span>←</span></a>
-        </article>
-
-        <article class="service-card">
-          <div class="service-icon">🧾</div>
-          <h3>ثبت‌نام‌های اینترنتی</h3>
-          <p>برای بررسی خدمات ثبت‌نامی موجود و ثبت درخواست وارد ربات شوید.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">مشاهده خدمات <span>←</span></a>
-        </article>
-
-        <article class="service-card">
-          <div class="service-icon">🏦</div>
-          <h3>خدمات بانکی و مالی</h3>
-          <p>دسترسی به دسته خدمات بانکی، مالی و مالیاتی در منوی ربات.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ورود به ربات <span>←</span></a>
-        </article>
-
-        <article class="service-card">
-          <div class="service-icon">🛡️</div>
-          <h3>خدمات بیمه</h3>
-          <p>مشاهده گزینه‌های بیمه‌ای موجود و انتخاب خدمت موردنیاز.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">بررسی خدمات <span>←</span></a>
-        </article>
-
-        <article class="service-card">
-          <div class="service-icon">⚖️</div>
-          <h3>خدمات قضایی و اداری</h3>
-          <p>دسترسی به دسته خدمات اداری و قضایی ارائه‌شده در ربات.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ثبت درخواست <span>←</span></a>
-        </article>
-
-        <article class="service-card">
-          <div class="service-icon">💬</div>
-          <h3>پشتیبانی کاربران</h3>
-          <p>برای راهنمایی درباره ثبت درخواست یا مطرح‌کردن سؤال با پشتیبانی ارتباط بگیرید.</p>
-          <a class="service-link" href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">ارتباط با پشتیبانی <span>←</span></a>
-        </article>
+        <article class="service-card"><div class="service-icon">🚘</div><h3>خدمات خودرو</h3><p>درخواست خدمات مرتبط با خودرو، ثبت‌نام‌ها و سایر موارد موجود در ربات.</p><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ثبت درخواست <span>←</span></a></article>
+        <article class="service-card"><div class="service-icon">🧾</div><h3>ثبت‌نام‌های اینترنتی</h3><p>برای بررسی خدمات ثبت‌نامی موجود و ثبت درخواست وارد ربات شوید.</p><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">مشاهده خدمات <span>←</span></a></article>
+        <article class="service-card"><div class="service-icon">🏦</div><h3>خدمات بانکی و مالی</h3><p>دسترسی به دسته خدمات بانکی، مالی و مالیاتی در منوی ربات.</p><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ورود به ربات <span>←</span></a></article>
+        <article class="service-card"><div class="service-icon">🛡️</div><h3>خدمات بیمه</h3><p>مشاهده گزینه‌های بیمه‌ای موجود و انتخاب خدمت موردنیاز.</p><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">بررسی خدمات <span>←</span></a></article>
+        <article class="service-card"><div class="service-icon">⚖️</div><h3>خدمات قضایی و اداری</h3><p>دسترسی به دسته خدمات اداری و قضایی ارائه‌شده در ربات.</p><a class="service-link" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ثبت درخواست <span>←</span></a></article>
+        <article class="service-card"><div class="service-icon">💬</div><h3>پشتیبانی کاربران</h3><p>برای راهنمایی درباره ثبت درخواست یا مطرح‌کردن سؤال با پشتیبانی ارتباط بگیرید.</p><a class="service-link" href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">ارتباط با پشتیبانی <span>←</span></a></article>
       </div>
     </section>
-
     <section class="section container" id="steps">
-      <div class="section-heading">
-        <div>
-          <div class="section-kicker">شروع آسان</div>
-          <h2>در سه قدم شروع کنید</h2>
-          <p class="section-description">فرایند ثبت درخواست را از طریق ربات دنبال کنید.</p>
-        </div>
-      </div>
-
+      <div class="section-heading"><div><div class="section-kicker">شروع آسان</div><h2>در سه قدم شروع کنید</h2><p class="section-description">فرایند ثبت درخواست را از طریق ربات دنبال کنید.</p></div></div>
       <div class="steps">
-        <article class="step">
-          <div class="step-number">۱</div>
-          <h3>ورود به ربات</h3>
-          <p>روی دکمه ثبت درخواست بزنید و وارد ربات رسمی کافی‌نت آنلاین 24 شوید.</p>
-        </article>
-
-        <article class="step">
-          <div class="step-number">۲</div>
-          <h3>انتخاب خدمت</h3>
-          <p>از منوی ربات، دسته‌بندی و خدمت موردنیازتان را انتخاب کنید.</p>
-        </article>
-
-        <article class="step">
-          <div class="step-number">۳</div>
-          <h3>ثبت و پیگیری درخواست</h3>
-          <p>اطلاعات لازم را طبق راهنمای ربات ارسال کنید و کد پیگیری درخواست را نگه دارید.</p>
-        </article>
+        <article class="step"><div class="step-number">۱</div><h3>ورود به ربات</h3><p>روی دکمه ثبت درخواست بزنید و وارد ربات رسمی کافی‌نت آنلاین 24 شوید.</p></article>
+        <article class="step"><div class="step-number">۲</div><h3>انتخاب خدمت</h3><p>از منوی ربات، دسته‌بندی و خدمت موردنیازتان را انتخاب کنید.</p></article>
+        <article class="step"><div class="step-number">۳</div><h3>ثبت و پیگیری درخواست</h3><p>اطلاعات لازم را طبق راهنمای ربات ارسال کنید و کد پیگیری درخواست را نگه دارید.</p></article>
       </div>
     </section>
-
     <section class="container" id="contact">
-      <div class="cta">
-        <div class="cta-content">
-          <div class="section-kicker" style="color:#9bffdc">کافی‌نت آنلاین 24</div>
-          <h2>آماده ثبت درخواست هستید؟</h2>
-          <p>
-            برای شروع، وارد ربات شوید. برای سؤال یا راهنمایی هم می‌توانید
-            از طریق حساب پشتیبانی با ما در ارتباط باشید.
-          </p>
-          <div class="hero-actions">
-            <a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ورود به ربات ←</a>
-            <a class="button button-light" href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">پشتیبانی کاربران</a>
-          </div>
-        </div>
-      </div>
+      <div class="cta"><div class="cta-content"><div class="section-kicker" style="color:#ffe0c5">کافی‌نت آنلاین 24</div><h2>آماده ثبت درخواست هستید؟</h2><p>برای شروع، وارد ربات شوید. برای سؤال یا راهنمایی هم می‌توانید از طریق حساب پشتیبانی با ما در ارتباط باشید.</p><div class="hero-actions"><a class="button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ورود به ربات ←</a><a class="button button-light" href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">پشتیبانی کاربران</a></div></div></div>
     </section>
   </main>
-
-  <footer class="footer">
-    <div class="container footer-inner">
-      <div>
-        <a class="brand" href="#home">
-          <div class="brand-icon">۲۴</div>
-          <div>
-            <div class="brand-name">کافی‌نت آنلاین 24</div>
-            <div class="brand-caption">همراه شما در خدمات آنلاین</div>
-          </div>
-        </a>
-        <div class="footer-copy">© <span id="year"></span> کافی‌نت آنلاین 24 — تمامی حقوق محفوظ است.</div>
-      </div>
-
-      <div class="footer-links">
-        <a href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ربات رسمی</a>
-        <a href="https://t.me/CafiNetOnlin24" target="_blank" rel="noopener noreferrer">کانال اطلاع‌رسانی</a>
-        <a href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">پشتیبانی</a>
-      </div>
-    </div>
-  </footer>
-
-  <a class="floating-button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer" aria-label="ورود به ربات کافی‌نت آنلاین 24">
-    <span class="floating-icon">✦</span>
-    <span>شروع ثبت درخواست</span>
-  </a>
-
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
+  <footer class="footer"><div class="container footer-inner"><div><a class="brand" href="#home"><div class="brand-icon">۲۴</div><div><div class="brand-name">کافی‌نت آنلاین 24</div><div class="brand-caption">همراه شما در خدمات آنلاین</div></div></a><div class="footer-copy">© <span id="year"></span> کافی‌نت آنلاین 24 — تمامی حقوق محفوظ است.</div></div><div class="footer-links"><a href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer">ربات رسمی</a><a href="https://t.me/CafiNetOnlin24" target="_blank" rel="noopener noreferrer">کانال اطلاع‌رسانی</a><a href="https://t.me/CafiNetOnlin_Support" target="_blank" rel="noopener noreferrer">پشتیبانی</a></div></div></footer>
+  <a class="floating-button" href="https://t.me/CafiNetOnlinBot" target="_blank" rel="noopener noreferrer" aria-label="ورود به ربات کافی‌نت آنلاین 24"><span class="floating-icon">✦</span><span>شروع ثبت درخواست</span></a>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
 </body>
 </html>
