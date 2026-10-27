@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>کافی نت آنلاین 24</title>
+  <!-- فونت وزیرمتن و آیکون‌های FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- اسکریپت رسمی تلگرام وب اپ -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #0d0f12;
+      --card-bg: #16191e;
+      --card-inner: #1e2229;
+      --primary: #ff6b00;
+      --primary-hover: #e05e00;
+      --text-main: #ffffff;
+      --text-sub: #9ca3af;
+      --border-color: #2a2f38;
+      --status-pending: #d97706;
+      --status-process: #2563eb;
+      --status-done: #16a34a;
+      --status-reject: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Vazirmatn', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 880px;
+      background-color: var(--bg-color);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 0 25px rgba(0,0,0,0.8);
+    }
+
+    @media (min-width: 440px) {
+      .app-container {
+        border-radius: 30px;
+        height: 92vh;
+        border: 2px solid var(--border-color);
+      }
+    }
+
+    .app-header {
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: var(--bg-color);
+      z-index: 10;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-title span {
+      color: var(--primary);
+    }
+
+    .header-icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-main);
+      font-size: 20px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .page {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px 20px 80px 20px;
+      display: none;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 65px;
+      background-color: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+      padding-bottom: 5px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-sub);
+      font-size: 11px;
+      cursor: pointer;
+      gap: 4px;
+      transition: 0.2s;
+    }
+
+    .nav-item i {
+      font-size: 18px;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #ff6b00, #ff8800);
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+      transition: 0.2s;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .welcome-card {
+      background: linear-gradient(135deg, #1e2229, #16191e);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .welcome-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .banner-card {
+      background: linear-gradient(135deg, #ff6b00, #d95300);
+      border-radius: 16px;
+      padding: 18px;
+      color: #fff;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .banner-card h3 { font-size: 16px; margin-bottom: 5px; }
+    .banner-card p { font-size: 12px; opacity: 0.9; }
+
+    .section-title {
+      font-size: 14px;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .service-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 15px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .service-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .service-card i {
+      font-size: 24px;
+      color: var(--primary);
+    }
+
+    .service-card span {
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .sub-services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .sub-service-item {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .sub-service-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sub-service-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background-color: var(--card-inner);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 18px;
+    }
+
+    .sub-service-text h4 { font-size: 13px; margin-bottom: 2px; }
+    .sub-service-text p { font-size: 11px; color: var(--text-sub); }
+
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    .stepper::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: var(--border-color);
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .step {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 2;
+      color: var(--text-sub);
+    }
+
+    .step.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    .input-box {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-box input, .input-box textarea {
+      width: 100%;
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .input-box i {
+      color: var(--text-sub);
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .filter-tab {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--text-sub);
+    }
+
+    .filter-tab.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .request-item {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      color: #fff;
+    }
+    .status-pending { background-color: var(--status-pending); }
+    .status-process { background-color: var(--status-process); }
+    .status-done { background-color: var(--status-done); }
+    .status-reject { background-color: var(--status-reject); }
+
+    .support-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .profile-header {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .profile-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .menu-item {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .modal {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="app-header">
+      <div id="back-btn" class="header-icon-btn" style="display: none;" onclick="goBack()">
+        <i class="fa-solid fa-arrow-right"></i>
+      </div>
+      <div class="header-title" id="page-title">
+        کافی نت <span>آنلاین 24</span>
+      </div>
+      <button class="header-icon-btn" onclick="alert('نوتیفیکیشن جدیدی ندارید.')">
+        <i class="fa-regular fa-bell"></i>
+      </button>
+    </div>
+
+    <!-- صفحه 1: خانه -->
+    <div id="page-home" class="page active">
+      <div class="welcome-card">
+        <div class="welcome-avatar">
+          <i class="fa-solid fa-user-ninja"></i>
+        </div>
+        <div>
+          <h4 style="font-size: 14px;" id="welcome-user-name">سلام ! 👋</h4>
+          <p style="font-size: 11px; color: var(--text-sub); margin-top: 2px;">به کافی نت آنلاین 24 خوش آمدید</p>
+        </div>
+      </div>
+
+      <div class="banner-card">
+        <h3>سریع، مطمئن، بدون معطلی</h3>
+        <p>انجام کلیه خدمات اینترنتی و ثبت‌نام‌ها در یکجا</p>
+      </div>
+
+      <div class="section-title">
+        <i class="fa-solid fa-layer-group"></i> دسته‌بندی خدمات
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card" onclick="openCategory('خودرو و بیمه')">
+          <i class="fa-solid fa-car"></i>
+          <span>خودرو و بیمه</span>
+        </div>
+        <div class="service-card" onclick="openCategory('مالیاتی')">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+          <span>مالیاتی</span>
+        </div>
+        <div class="service-card" onclick="openCategory('قضایی')">
+          <i class="fa-solid fa-scale-balanced"></i>
+          <span>قضایی</span>
+        </div>
+        <div class="service-card" onclick="openCategory('بانکی و وام')">
+          <i class="fa-solid fa-building-columns"></i>
+          <span>بانکی و وام</span>
+        </div>
+        <div class="service-card" onclick="openCategory('کالابرگ و یارانه')">
+          <i class="fa-solid fa-box-open"></i>
+          <span>کالابرگ و یارانه</span>
+        </div>
+        <div class="service-card" onclick="openCategory('سایر خدمات')">
+          <i class="fa-solid fa-grip-vertical"></i>
+          <span>سایر خدمات</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- صفحه 2: زیرخدمات -->
+    <div id="page-category" class="page">
+      <div class="banner-card" style="background: linear-gradient(135deg, #2a2f38, #16191e);">
+        <h3 id="cat-title-display">خدمات خودرو و بیمه</h3>
+        <p>ثبت نام، استعلام و انجام کلیه امور آنلاین</p>
+      </div>
+
+      <div class="sub-services-list" id="sub-services-container"></div>
+    </div>
+
+    <!-- صفحه 3: فرم دریافت اطلاعات -->
+    <div id="page-form" class="page">
+      <div class="stepper">
+        <div class="step active">1</div>
+        <div class="step">2</div>
+        <div class="step">3</div>
+        <div class="step">4</div>
+      </div>
+
+      <h4 style="font-size: 14px; margin-bottom: 15px; color: var(--primary);" id="form-service-name">اطلاعات شما</h4>
+
+      <form id="request-form" onsubmit="handleFormSubmit(event)">
+        <div class="form-group">
+          <label>نام و نام خانوادگی</label>
+          <div class="input-box">
+            <i class="fa-regular fa-user"></i>
+            <input type="text" id="input-fullname" placeholder="مثال: محمد مهدی آبادی" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>شماره موبایل</label>
+          <div class="input-box">
+            <i class="fa-solid fa-mobile-screen"></i>
+            <input type="tel" id="input-phone" placeholder="09123456789" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>آیدی تلگرام (اختیاری)</label>
+          <div class="input-box">
+            <i class="fa-solid fa-at"></i>
+            <input type="text" id="input-username" placeholder="username@">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>توضیحات (اختیاری)</label>
+          <div class="input-box">
+            <i class="fa-regular fa-pen-to-square"></i>
+            <textarea id="input-desc" rows="3" placeholder="توضیحات خود را بنویسید..."></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top: 20px;">
+          ارسال درخواست به ربات <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- صفحه 4: درخواست‌های من -->
+    <div id="page-requests" class="page">
+      <div class="filter-tabs">
+        <div class="filter-tab active" onclick="filterRequests('all', this)">همه</div>
+        <div class="filter-tab" onclick="filterRequests('pending', this)">در حال بررسی</div>
+        <div class="filter-tab" onclick="filterRequests('process', this)">در حال انجام</div>
+        <div class="filter-tab" onclick="filterRequests('done', this)">انجام شده</div>
+      </div>
+
+      <div id="requests-list">
+        <div class="request-item" data-status="pending">
+          <div>
+            <h4 style="font-size: 13px;">ثبت نام بیمه شخص ثالث</h4>
+            <p style="font-size: 10px; color: var(--text-sub); margin-top: 4px;">1404/07/15 - 12:30</p>
+          </div>
+          <span class="status-badge status-pending">در حال بررسی</span>
+        </div>
+        <div class="request-item" data-status="process">
+          <div>
+            <h4 style="font-size: 13px;">استعلام خلافی خودرو</h4>
+            <p style="font-size: 10px; color: var(--text-sub); margin-top: 4px;">1404/07/14 - 16:45</p>
+          </div>
+          <span class="status-badge status-process">در حال انجام</span>
+        </div>
+        <div class="request-item" data-status="done">
+          <div>
+            <h4 style="font-size: 13px;">ثبت نام کالابرگ</h4>
+            <p style="font-size: 10px; color: var(--text-sub); margin-top: 4px;">1404/07/12 - 09:20</p>
+          </div>
+          <span class="status-badge status-done">انجام شد</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- صفحه 5: پشتیبانی -->
+    <div id="page-support" class="page">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <i class="fa-solid fa-headset" style="font-size: 45px; color: var(--primary);"></i>
+        <h3 style="margin-top: 10px; font-size: 16px;">در ارتباط با ما باشید</h3>
+        <p style="font-size: 11px; color: var(--text-sub); margin-top: 4px;">در صورت نیاز به راهنمایی یا پیگیری پیام دهید.</p>
+      </div>
+
+      <div class="support-card" onclick="openTelegramLink('https://t.me/CafiNetOnlinBot')">
+        <div class="sub-service-info">
+          <div class="sub-service-icon"><i class="fa-solid fa-robot"></i></div>
+          <div class="sub-service-text">
+            <h4>ربات تلگرام</h4>
+            <p>شروع سریع گفتگو با ربات</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-left" style="color: var(--text-sub);"></i>
+      </div>
+
+      <div class="support-card" onclick="openTelegramLink('https://t.me/CafiNetOnlinBot')">
+        <div class="sub-service-info">
+          <div class="sub-service-icon"><i class="fa-paper-plane fa-regular"></i></div>
+          <div class="sub-service-text">
+            <h4>کانال تلگرام</h4>
+            <p>مشاهده آخرین اخبار و خدمات</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-left" style="color: var(--text-sub);"></i>
+      </div>
+
+      <div class="support-card" onclick="openTelegramLink('https://t.me/CafiNetOnlin_Support')">
+        <div class="sub-service-info">
+          <div class="sub-service-icon"><i class="fa-solid fa-user-gear"></i></div>
+          <div class="sub-service-text">
+            <h4>پشتیبانی آنلاین</h4>
+            <p>@CafiNetOnlin_Support</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-left" style="color: var(--text-sub);"></i>
+      </div>
+
+      <button class="btn-primary" style="margin-top: 20px;" onclick="openTelegramLink('https://t.me/CafiNetOnlinBot')">
+        <i class="fa-paper-plane fa-solid"></i> سفارش و هماهنگی مستقیم
+      </button>
+    </div>
+
+    <!-- صفحه 6: پروفایل -->
+    <div id="page-profile" class="page">
+      <div class="profile-header">
+        <div class="welcome-avatar">
+          <i class="fa-solid fa-user"></i>
+        </div>
+        <div style="flex: 1;">
+          <h4 style="font-size: 14px;" id="profile-fullname">کاربر عزیز</h4>
+          <p style="font-size: 11px; color: var(--text-sub);" id="user-handle">@user_telegram</p>
+        </div>
+      </div>
+
+      <div class="profile-menu">
+        <div class="menu-item" onclick="switchPage('requests', 'درخواست‌های من')">
+          <div class="sub-service-info">
+            <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i>
+            <span style="font-size: 13px;">درخواست‌های من</span>
+          </div>
+          <i class="fa-solid fa-chevron-left" style="color: var(--text-sub);"></i>
+        </div>
+
+        <div class="menu-item" onclick="alert('تنظیمات به زودی فعال می‌شود.')">
+          <div class="sub-service-info">
+            <i class="fa-solid fa-gear" style="color: var(--primary);"></i>
+            <span style="font-size: 13px;">تنظیمات</span>
+          </div>
+          <i class="fa-solid fa-chevron-left" style="color: var(--text-sub);"></i>
+        </div>
+
+        <div class="menu-item" onclick="closeApp()" style="margin-top: 15px; border-color: rgba(220, 38, 38, 0.3);">
+          <div class="sub-service-info">
+            <i class="fa-solid fa-right-from-bracket" style="color: var(--status-reject);"></i>
+            <span style="font-size: 13px; color: var(--status-reject);">خروج از حساب</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- نوار ناوبری پایین -->
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="switchPage('home', 'کافی نت <span>آنلاین 24</span>')">
+        <i class="fa-solid fa-house"></i>
+        <span>خانه</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('requests', 'درخواست‌های من')">
+        <i class="fa-solid fa-list-check"></i>
+        <span>درخواست‌ها</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('support', 'پشتیبانی')">
+        <i class="fa-solid fa-headset"></i>
+        <span>پشتیبانی</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('profile', 'پروفایل کاربر')">
+        <i class="fa-solid fa-user"></i>
+        <span>پروفایل</span>
+      </div>
+    </div>
+
+    <!-- مودال ثبت موفقیت‌آمیز -->
+    <div class="modal" id="success-modal">
+      <div class="modal-content">
+        <i class="fa-solid fa-circle-check" style="font-size: 45px; color: var(--status-done); margin-bottom: 10px;"></i>
+        <h3 style="font-size: 15px; margin-bottom: 8px;">درخواست ارسال شد</h3>
+        <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 15px;">اطلاعات شما با موفقیت به ربات ارسال شد.</p>
+        <button class="btn-primary" onclick="closeModal()">متوجه شدم</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // اتصال اولیه به تلگرام
+    const tg = window.Telegram?.WebApp;
+    let selectedService = '';
+
+    if (tg) {
+      tg.expand(); // باز کردن به صورت تمام صفحه
+      tg.ready();
+
+      // خواندن اطلاعات واقعی کاربر تلگرام
+      if(tg.initDataUnsafe?.user) {
+        const u = tg.initDataUnsafe.user;
+        const name = (u.first_name || '') + ' ' + (u.last_name || '');
+        document.getElementById('welcome-user-name').innerText = 'سلام ' + (u.first_name || '') + ' ! 👋';
+        document.getElementById('profile-fullname').innerText = name.trim() || 'کاربر عزیز';
+        document.getElementById('user-handle').innerText = u.username ? '@' + u.username : 'بدون آیدی';
+        document.getElementById('input-fullname').value = name.trim();
+        document.getElementById('input-username').value = u.username ? '@' + u.username : '';
+      }
+
+      // فعالسازی دکمه بازگشت بالای صفحه در تلگرام
+      tg.BackButton.onClick(() => {
+        goBack();
+      });
+    }
+
+    const servicesData = {
+      'خودرو و بیمه': [
+        { title: 'استعلام خلافی خودرو', desc: 'استعلام و پرداخت خلافی خودرو' },
+        { title: 'ثبت نام بیمه شخص ثالث', desc: 'برای تمامی وسایل نقلیه' },
+        { title: 'تمدید بیمه‌نامه', desc: 'تمدید انواع بیمه‌نامه‌ها' },
+        { title: 'پلاک و کارت سوخت', desc: 'صدور و تعویض پلاک، کارت سوخت' }
+      ],
+      'مالیاتی': [
+        { title: 'اظهارنامه مالیاتی', desc: 'ثبت اظهارنامه مشاغل و اشخاص' },
+        { title: 'استعلام بدهی مالیاتی', desc: 'بررسی پرونده و بدهی مالیاتی' }
+      ],
+      'قضایی': [
+        { title: 'ثبت نام ثنا', desc: 'ثبت نام سامانه ثنا نوبت دهی' },
+        { title: 'گواهی عدم سوء پیشینه', desc: 'دریافت آنلاین و سریع' }
+      ],
+      'بانکی و وام': [
+        { title: 'درخواست وام خانگی و بانکی', desc: 'ثبت نام و پیگیری تسهیلات' }
+      ],
+      'کالابرگ و یارانه': [
+        { title: 'استعلام یارانه و کالابرگ', desc: 'بررسی دهک‌بندی و موجودی' }
+      ],
+      'سایر خدمات': [
+        { title: 'ثبت نام اینترنتی عام', desc: 'کلیه ثبت‌نام‌های استخدامی و دانشگاهی' }
+      ]
+    };
+
+    function switchPage(pageId, titleText) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const targetPage = document.getElementById(`page-${pageId}`);
+      if(targetPage) targetPage.classList.add('active');
+
+      if(titleText) {
+        document.getElementById('page-title').innerHTML = titleText;
+      }
+
+      // نمایش یا مخفی‌سازی دکمه بازگشت
+      const backBtn = document.getElementById('back-btn');
+      if (pageId !== 'home') {
+        backBtn.style.display = 'block';
+        if(tg && tg.BackButton) tg.BackButton.show();
+      } else {
+        backBtn.style.display = 'none';
+        if(tg && tg.BackButton) tg.BackButton.hide();
+      }
+
+      // تغییر وضعیت تب منوی پایین
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      if(pageId === 'home') document.querySelectorAll('.nav-item')[0].classList.add('active');
+      if(pageId === 'requests') document.querySelectorAll('.nav-item')[1].classList.add('active');
+      if(pageId === 'support') document.querySelectorAll('.nav-item')[2].classList.add('active');
+      if(pageId === 'profile') document.querySelectorAll('.nav-item')[3].classList.add('active');
+    }
+
+    function openCategory(catName) {
+      document.getElementById('cat-title-display').innerText = 'خدمات ' + catName;
+      const container = document.getElementById('sub-services-container');
+      container.innerHTML = '';
+
+      const list = servicesData[catName] || servicesData['خودرو و بیمه'];
+      list.forEach(item => {
+        container.innerHTML += `
+          <div class="sub-service-item" onclick="openForm('${item.title}')">
+            <div class="sub-service-info">
+              <div class="sub-service-icon"><i class="fa-solid fa-angle-left"></i></div>
+              <div class="sub-service-text">
+                <h4>${item.title}</h4>
+                <p>${item.desc}</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-left" style="color: var(--text-sub); font-size: 12px;"></i>
+          </div>
+        `;
+      });
+
+      switchPage('category', catName);
+    }
+
+    function openForm(serviceTitle) {
+      selectedService = serviceTitle;
+      document.getElementById('form-service-name').innerText = 'ثبت درخواست: ' + serviceTitle;
+      switchPage('form', 'ثبت درخواست جدید');
+    }
+
+    function goBack() {
+      switchPage('home', 'کافی نت <span>آنلاین 24</span>');
+    }
+
+    function filterRequests(status, element) {
+      document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+      element.classList.add('active');
+
+      const items = document.querySelectorAll('.request-item');
+      items.forEach(item => {
+        if(status === 'all' || item.getAttribute('data-status') === status) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // ارسال واقعی اطلاعات فرم به ربات تلگرام
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const payload = {
+        action: 'new_request',
+        service: selectedService,
+        fullname: document.getElementById('input-fullname').value,
+        phone: document.getElementById('input-phone').value,
+        username: document.getElementById('input-username').value,
+        description: document.getElementById('input-desc').value
+      };
+
+      // در صورتی که مینی اپ داخل تلگرام باز شده باشد، اطلاعات را به سورس ربات ارسال می‌کند
+      if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify(payload));
+      } else {
+        // در صورت تست خارج از تلگرام
+        document.getElementById('success-modal').style.display = 'flex';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('success-modal').style.display = 'none';
+      switchPage('requests', 'درخواست‌های من');
+    }
+
+    function openTelegramLink(url) {
+      if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    function closeApp() {
+      if (tg) tg.close();
+    }
+  </script>
+</body>
+</html>
