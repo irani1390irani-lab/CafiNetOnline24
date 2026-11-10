@@ -1606,7 +1606,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             response = await groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-20b",
                 messages=messages,
                 temperature=0.7,
                 max_completion_tokens=2048,
