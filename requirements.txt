@@ -1,1 +1,2 @@
 python-telegram-bot
+groq>=0.11.0
