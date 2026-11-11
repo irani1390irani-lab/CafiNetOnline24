@@ -1527,6 +1527,65 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================
+# BROADCAST HELPERS
+# =========================
+async def send_broadcast_message(message, context):
+    """Copy the admin's original Telegram message to every registered user.
+
+    copy_message preserves Telegram formatting/entities, captions, hidden links,
+    and supported media without rebuilding the message as plain text.
+    """
+    conn = get_db()
+    users = conn.execute("SELECT user_id FROM users").fetchall()
+    conn.close()
+
+    sent = 0
+    failed = 0
+
+    for row in users:
+        user_id = row["user_id"]
+        try:
+            await context.bot.copy_message(
+                chat_id=user_id,
+                from_chat_id=message.chat_id,
+                message_id=message.message_id,
+            )
+            sent += 1
+        except Exception:
+            failed += 1
+            logger.exception("Broadcast failed for user %s", user_id)
+
+    return sent, failed
+
+
+async def broadcast_media_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle photos, videos, documents, audio, stickers and other non-text messages."""
+    user = update.effective_user
+    message = update.effective_message
+
+    if not user or user.id != ADMIN_ID or not message:
+        return
+
+    # Text messages are handled by text_handler in the default handler group.
+    if message.text is not None:
+        return
+
+    state = USER_STATES.get(user.id)
+    if not state or state.get("state") != STATE_BROADCAST:
+        return
+
+    USER_STATES.pop(user.id, None)
+    sent, failed = await send_broadcast_message(message, context)
+
+    await message.reply_text(
+        "✅ ارسال پیام همگانی به پایان رسید.\n\n"
+        f"📨 ارسال موفق: {sent}\n"
+        f"❌ ارسال ناموفق: {failed}",
+        reply_markup=admin_keyboard(),
+    )
+
+
+# =========================
 # CONTACT HANDLER
 # =========================
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1915,20 +1974,11 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid != ADMIN_ID:
             return
         USER_STATES.pop(uid, None)
-        conn = get_db()
-        users = conn.execute("SELECT user_id FROM users").fetchall()
-        conn.close()
-        sent = 0
-        failed = 0
-        for row in users:
-            try:
-                await context.bot.send_message(row["user_id"], "📢 پیام مدیریت\n\n" + text)
-                sent += 1
-            except Exception:
-                failed += 1
+        sent, failed = await send_broadcast_message(update.message, context)
         await update.message.reply_text(
-            "✅ پیام همگانی ارسال شد.\n\n"
-            f"📨 موفق: {sent}\n❌ ناموفق: {failed}",
+            "✅ ارسال پیام همگانی به پایان رسید.\n\n"
+            f"📨 ارسال موفق: {sent}\n"
+            f"❌ ارسال ناموفق: {failed}",
             reply_markup=admin_keyboard(),
         )
         return
@@ -2161,6 +2211,11 @@ def main():
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(filters.CONTACT, contact_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
+    # Group 1: non-text broadcast messages (photo, video, file, audio, sticker, ...)
+    app.add_handler(
+        MessageHandler(filters.ALL & ~filters.COMMAND, broadcast_media_handler),
+        group=1,
+    )
     app.add_error_handler(error_handler)
     logger.info("CafiNetOnline24 Started")
     app.run_polling()
